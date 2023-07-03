@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponse,JsonResponse
 from django.core import serializers
-from v1.models import Package,Requirement,Document
+from v1.models import Package,Requirement,Document,Disease,Doctor
 # from django.contrib.users
 import logging
 import json
@@ -17,6 +17,8 @@ class ExtendedEncoder(DjangoJSONEncoder):
     def default(self, o):
         if isinstance(o, Model):
             return model_to_dict(o)
+        elif isinstance(o, list):
+            return [self.default(item) for item in o]
         return super().default(o)
     
 logger = logging.getLogger(__name__)
@@ -63,9 +65,15 @@ def login(request):
     return HttpResponse(request,"Error Pages/405.html",status = 405)
 
 def get_packages(request):
-    # if (request.user.is_authenticated):
-    packages = Package.objects.all()
-    serialized_packages = serializers.serialize("json",packages)
+    request_json = json.loads(request.body)
+    disease_id = request_json.get("disease_id")
+    if (disease_id != None):
+        packages = Package.objects.select_related('disease').filter(disease=disease_id)
+    else:
+        packages = Package.objects.disease.all()
+    
+    
+    serialized_packages = json.dumps(list(packages),cls=ExtendedEncoder)
     return JsonResponse(json.loads(serialized_packages) ,safe=False)
 
 def get_package(request):
