@@ -16,7 +16,12 @@ from django.db.models import Model
 class ExtendedEncoder(DjangoJSONEncoder):
     def default(self, o):
         if isinstance(o, Model):
-            return model_to_dict(o)
+            oo = model_to_dict(o)
+            for field in o._meta.fields:
+                val = getattr(o, field.name)
+                if isinstance(val, Model):
+                    oo[field.name] = self.default(val)
+            return oo
         elif isinstance(o, list):
             return [self.default(item) for item in o]
         return super().default(o)
@@ -65,12 +70,9 @@ def login(request):
     return HttpResponse(request,"Error Pages/405.html",status = 405)
 
 def get_packages(request):
-    request_json = json.loads(request.body)
-    disease_id = request_json.get("disease_id")
-    if (disease_id != None):
-        packages = Package.objects.select_related('disease').filter(disease=disease_id)
-    else:
-        packages = Package.objects.disease.all()
+    packages = Package.objects.select_related('related_doctor', 'related_hospital', 'disease').all()
+    serialized_packages = json.dumps(list(packages),cls=ExtendedEncoder)
+    return JsonResponse(json.loads(serialized_packages) ,safe=False)
     
     
     serialized_packages = json.dumps(list(packages),cls=ExtendedEncoder)
