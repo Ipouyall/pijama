@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponse,JsonResponse
 from django.core import serializers
-from v1.models import ExtendedUser,Package,Requirement,Document,Disease,Doctor
+from v1.models import TreatmentRequest,ExtendedUser,Package,Requirement,Document,Disease,Doctor
 # from django.contrib.users
 from django.contrib.auth import logout                           
 import logging
@@ -13,13 +13,62 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import Model   
 from v1.encoders import ExtendedEncoder
 import random,string
+from datetime import datetime
 logger = logging.getLogger(__name__)
 
-def gen_token():
-    token_length = 32
+class QueryBuilder():
+    @staticmethod
+    def insert_treatment_request(pid,uid,td_ids):
+        last_updated = datetime.now()
+        ntr = TreatmentRequest(related_package =pid,related_patient= uid,last_updated=last_updated)
+        for td_id in td_ids:
+            ntr.related_documents.add(td_id)
+        ntr.save()
+        return ntr.id
+    #-----------------------------------------------------------#
+    def insert_docs(document_title,document_content,related_requirement_id):
+        nd = Document(document_title,document_content,related_requirement_id)
+        nd.save()
+        return nd.id
+    #-----------------------------------------------------------#
+    def get_user_by_token(token):
+        return ExtendedUser.objects.filter(token = token).first()
+
+def gen_token(token_length=32):
     return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(token_length))
 
-    
+class DocumentHandler():
+    @staticmethod
+    def submit_docs(request_json):
+            documents = request_json["documents"] # Map of document contents and requirement id and document title
+            td_ids = []
+            for document in documents:
+                title = document["title"]
+                related_req_id = document["related_req_id"]
+                content = document ["content"]
+                id = QueryBuilder.insert_docs(title,content,related_req_id)
+                td_ids.append(id)
+            return td_ids
+
+class TreatmentRequestHandler():
+    @staticmethod
+    def create_treatment_request(pid,uid,td_ids):
+        QueryBuilder.insert_treatment_request(pid,uid,td_ids)
+    def get_treatment_requests():
+        return
+
+class Controller():
+    @staticmethod
+    def upload_user_docs(request):
+        if (request.method == 'POST'):
+            request_json = json.loads(request.body)
+            td_ids = DocumentHandler.submit_docs(request_json)
+            pid    = request_json["pid"]
+            uid    = QueryBuilder.get_user_by_token(request_json["token"]).related_user.id
+            tr_id = TreatmentRequestHandler.create_treatment_request(uid,pid,td_ids)
+            return JsonResponse({"td_id":tr_id,
+                                 "status": 200})
+
 class PackageHandler():
     @staticmethod
     def get_packages(request):
@@ -45,14 +94,14 @@ class PackageHandler():
             requirements=[]
         serialized_requirments = json.dumps(list(requirements),cls=ExtendedEncoder)
         return JsonResponse(json.loads(serialized_requirments) ,safe=False)
-
+    
 class AuthenticationHandler():
     @staticmethod
     def logout(request):
         if (request.method == 'POST'):
             request_json = json.loads(request.body)
             token  = request_json["token"]
-            t_user = ExtendedUser.objects.filter(token = token).first()
+            t_user = QueryBuilder.get_user_by_token(token)
             if (t_user == None):
                 return JsonResponse({"message":"Logout failed"
                                     ,"code ": 400})

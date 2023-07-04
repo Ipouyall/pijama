@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 # Create your models here.
 from datetime import datetime
+
 class ExtendedUser(models.Model):
     related_user = models.OneToOneField(User,on_delete=models.CASCADE,related_name='extended_user_real_user')
     token = models.CharField(max_length=32,null=True,blank=True)
@@ -62,7 +63,6 @@ class Package(models.Model):
 
 class Document(models.Model):
     document_title =models.CharField(max_length=200) 
-    description = models.CharField(max_length=200)
     content   = models.CharField(max_length=10000,null=True,blank=True)
     related_requirement = models.ForeignKey(Requirement, verbose_name="related_reqs", on_delete=models.DO_NOTHING,
                                             null=True,blank=True)
@@ -102,7 +102,7 @@ class Viza(models.Model):
 class TreatmentRequest(models.Model):
     related_package= models.ForeignKey(Package,verbose_name="tr_related_package",on_delete=models.DO_NOTHING,null=True,blank=True)
     related_patient = models.ForeignKey(Patient,verbose_name="tr_related_user",on_delete=models.CASCADE,null=True,blank=True)
-    related_documents = models.ManyToManyField(Document,verbose_name="related_documents")
+    related_documents = models.ManyToManyField(Document,verbose_name="related_documents",null=True,blank=True)
     related_viza  =models.OneToOneField(Viza,null=True,blank=True,on_delete=models.CASCADE)
     submitted_date = models.DateTimeField(auto_created=True)
     last_updated = models.DateTimeField()
