@@ -14,7 +14,16 @@ from django.db.models import Model
 from v1.encoders import ExtendedEncoder
 import random,string
 from datetime import datetime
+import telegram
+from django.core.mail import send_mail
+TELEGRAM_BOT_API_TOKEN = "6316780921:AAHvZw68iEUCOaTPmRunibA3GyH9--jlbdY"
 logger = logging.getLogger(__name__)
+class Notifier():
+    @staticmethod
+    def notify(user_id,message):
+        bot =telegram.Bot(token=TELEGRAM_BOT_API_TOKEN)
+        # user_chat_id = 
+        bot.send_message(user_chat_id=user_id,text=message) 
 
 class QueryBuilder():
     @staticmethod
