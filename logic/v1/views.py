@@ -20,14 +20,15 @@ class QueryBuilder():
     @staticmethod
     def insert_treatment_request(pid,uid,td_ids):
         last_updated = datetime.now()
-        ntr = TreatmentRequest(related_package =pid,related_patient= uid,last_updated=last_updated)
+        ntr = TreatmentRequest(related_package_id =pid,related_patient_id= uid,last_updated=last_updated)
+        ntr.save()
         for td_id in td_ids:
             ntr.related_documents.add(td_id)
         ntr.save()
         return ntr.id
     #-----------------------------------------------------------#
     def insert_docs(document_title,document_content,related_requirement_id):
-        nd = Document(document_title,document_content,related_requirement_id)
+        nd = Document(document_title=document_title,content=document_content,related_requirement_id=related_requirement_id)
         nd.save()
         return nd.id
     #-----------------------------------------------------------#
@@ -53,7 +54,7 @@ class DocumentHandler():
 class TreatmentRequestHandler():
     @staticmethod
     def create_treatment_request(pid,uid,td_ids):
-        QueryBuilder.insert_treatment_request(pid,uid,td_ids)
+        return QueryBuilder.insert_treatment_request(pid,uid,td_ids)
     def get_treatment_requests():
         return
 
@@ -62,13 +63,21 @@ class Controller():
     def upload_user_docs(request):
         if (request.method == 'POST'):
             request_json = json.loads(request.body)
-            td_ids = DocumentHandler.submit_docs(request_json)
             pid    = request_json["pid"]
-            uid    = QueryBuilder.get_user_by_token(request_json["token"]).related_user.id
+            t_user=QueryBuilder.get_user_by_token(request_json["token"])
+            uid  = 0
+            if (t_user != None):
+                uid = t_user.related_user.id
+                td_ids = DocumentHandler.submit_docs(request_json)
+            else:
+                return JsonResponse({"status":403,
+                                     "message":"Not authenticated"})
+                 
             tr_id = TreatmentRequestHandler.create_treatment_request(uid,pid,td_ids)
-            return JsonResponse({"td_id":tr_id,
+            return JsonResponse({"tr_id":tr_id,
                                  "status": 200})
-
+        else:
+            return JsonResponse({"status":401})
 class PackageHandler():
     @staticmethod
     def get_packages(request):
