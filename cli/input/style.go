@@ -17,3 +17,19 @@ func DefaultStyles() *Styles {
 		Width(80)
 	return s
 }
+
+type DeadStyle struct {
+	BorderColor lipgloss.Color
+	InputField  lipgloss.Style
+}
+
+func NewDeadStyle() *DeadStyle {
+	s := new(DeadStyle)
+	s.BorderColor = lipgloss.Color("#130c25") // Use your desired color for not selected fields
+	s.InputField = lipgloss.NewStyle().
+		BorderForeground(s.BorderColor).
+		BorderStyle(lipgloss.NormalBorder()).
+		Padding(0).
+		Width(80)
+	return s
+}
