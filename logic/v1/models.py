@@ -2,6 +2,10 @@ from django.db import models
 from django.contrib.auth.models import User
 # Create your models here.
 from datetime import datetime
+class ExtendedUser(models.Model):
+    related_user = models.OneToOneField(User,on_delete=models.CASCADE,related_name='extended_user_real_user')
+    token = models.CharField(max_length=32,null=True,blank=True)
+    
 class Disease(models.Model):
     disease_name = models.CharField(max_length=200)
     def __str__(self):
@@ -14,7 +18,7 @@ class Hospital(models.Model):
         return self.hospital_name
 
 class Doctor(models.Model):
-    related_user = models.OneToOneField(User,verbose_name='related_user',on_delete=models.CASCADE,related_name='user_doc')
+    related_user = models.OneToOneField(ExtendedUser,verbose_name='related_user',on_delete=models.CASCADE,related_name='user_doc')
     practice = models.CharField(max_length=200)
     years_of_experience = models.IntegerField(default=0)
     related_hospitals = models.ManyToManyField(Hospital,verbose_name='hospitals',related_name='hospital_doc')
@@ -22,12 +26,12 @@ class Doctor(models.Model):
         return self.related_user.username
 
 class Patient(models.Model):
-    related_user = models.OneToOneField(User,verbose_name='related_user',on_delete=models.CASCADE,related_name='user_patient')
+    related_user = models.OneToOneField(ExtendedUser,verbose_name='related_user',on_delete=models.CASCADE,related_name='user_patient')
     def __str__(self):
         return self.related_user.username
 
 class Support(models.Model):
-    cor_user = models.OneToOneField(User,verbose_name='related_user',on_delete=models.CASCADE,related_name='support_doc')
+    cor_user = models.OneToOneField(ExtendedUser,verbose_name='related_user',on_delete=models.CASCADE,related_name='support_doc')
     years_of_experience = models.IntegerField(default=0)
     def __str__(self):
         return self.cor_user.username

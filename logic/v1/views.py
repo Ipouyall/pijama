@@ -1,28 +1,32 @@
 from django.shortcuts import render
 from django.http import HttpResponse,JsonResponse
 from django.core import serializers
-from v1.models import Package,Requirement,Document,Disease,Doctor
+from v1.models import ExtendedUser,Package,Requirement,Document,Disease,Doctor
 # from django.contrib.users
+from django.contrib.auth import logout                           
 import logging
 import json
-from django.core.serializers.json import DjangoJSONEncoder
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from django.contrib.sessions.models import Session
-from django.forms import model_to_dict
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db.models import Model    
+from django.db.models import Model   
+from v1.encoders import ExtendedEncoder
+import random,string
+logger = logging.getLogger(__name__)
+
+def gen_token():
+    token_length = 32
+    return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(token_length))
+
+    
 class PackageHandler():
     @staticmethod
     def get_packages(request):
-        request_json = json.loads(request.body)
-        disease_id = request_json.get("disease_id")
-        if (disease_id != None):
-            packages = Package.objects.select_related('disease').filter(disease=disease_id)
-        else:
-            packages = Package.objects.disease.all()    
+        packages = list(Package.objects.select_related('related_doctor', 'related_hospital', 'disease').all())
         serialized_packages = json.dumps(list(packages),cls=ExtendedEncoder)
         return JsonResponse(json.loads(serialized_packages) ,safe=False)
+
     @staticmethod
     def get_package(request):
         request_json = json.loads(request.body)
@@ -32,63 +36,51 @@ class PackageHandler():
         return JsonResponse(json.loads(serialized_package),safe=False)
     @staticmethod
     def get_package_requirements(request):
-        request_json = json.loads(request.body)
-        id = request_json["id"]
-        reqs = Requirement.objects.filter(requirements=id)
-        serialized_packages = serializers.serialize("json",reqs)
-        return JsonResponse(json.loads(serialized_packages) ,safe=False)
-
-
-    
-class ExtendedEncoder(DjangoJSONEncoder):
-    def default(self, o):
-        if isinstance(o, Model):
-            return model_to_dict(o)
-        elif isinstance(o, list):
-            return [self.default(item) for item in o]
-        return super().default(o)
-    
-logger = logging.getLogger(__name__)
-from django.contrib.auth import logout                           
-
-def logout_view(request):
-    if (request.method == 'POST'):
-        request_json = json.loads(request.body)
-        username = request_json["username"]
-        password = request_json["password"]
-        t_user = User.objects.filter(username = username)[0]
-        real_password = t_user.password
-        if (real_password == None):
-            return JsonResponse({"message":"User does not exist"
-                                 ,"code ": 404})
-        elif (not t_user.is_authenticated):
-            return JsonResponse({"message":"Not logged in"
-                                 ,"code ": 401})
+        json_request = json.loads(request.body)
+        id = json_request["id"]
+        packs = Package.objects.filter(pk=id).first()
+        if (packs != None):
+            requirements=packs.requirements.all()
         else:
-            user = User.objects.get(username=username)
-            [s.delete() for s in Session.objects.all() if s.get_decoded().get('_auth_user_id') == user.id]
-            user.save()
-            return JsonResponse({"message":"Logged out"
-                                 ,"code ": 200})
-    return HttpResponse(request,"Error Pages/405.html",status = 405)
+            requirements=[]
+        serialized_requirments = json.dumps(list(requirements),cls=ExtendedEncoder)
+        return JsonResponse(json.loads(serialized_requirments) ,safe=False)
 
-def login(request):
-    if (request.method == 'POST'):
-        request_json = json.loads(request.body)
-        username = request_json["username"]
-        password = request_json["password"]
-        t_user = User.objects.filter(username = username)[0]
-        real_password = t_user.password
-        if (real_password == None):
-            return JsonResponse({"message":"User does not exist"
-                                 ,"code ": 404})
-        elif (not authenticate(username=username,password=password)):
-            return JsonResponse({"message":"Wrong password"
-                                 ,"code ": 401})
-        else:
-            t_user.save()
-            return JsonResponse({"message":"Logged in "
-                                 ,"code ": 401,})
-    return HttpResponse(request,"Error Pages/405.html",status = 405)
-
+class AuthenticationHandler():
+    @staticmethod
+    def logout(request):
+        if (request.method == 'POST'):
+            request_json = json.loads(request.body)
+            token  = request_json["token"]
+            t_user = ExtendedUser.objects.filter(token = token).first()
+            if (t_user == None):
+                return JsonResponse({"message":"Logout failed"
+                                    ,"code ": 400})
+            else:
+                t_user.token = None
+                t_user.save()
+                return JsonResponse({"message":"Logged out"
+                                    ,"code ": 200})
+        return HttpResponse(request,"Error Pages/405.html",status = 405)
+    @staticmethod
+    def login(request):
+        if (request.method == 'POST'):
+            request_json = json.loads(request.body)
+            username = request_json["username"]
+            password = request_json["password"]
+            t_user = ExtendedUser.objects.filter(related_user__username = username).first()
+            if (t_user == None):
+                return JsonResponse({"message":"User does not exist"
+                                    ,"code ": 404})
+            else:
+                if (not authenticate(username=username,password=password)):
+                    return JsonResponse({"message":"Wrong password"
+                                        ,"code ": 401})
+                else:
+                    t_user.token = gen_token()
+                    t_user.save()
+                    return JsonResponse({"message":"Logged in ",
+                                        "token" : t_user.token
+                                        ,"code ": 200,})
+        return HttpResponse(request,"Error Pages/405.html",status = 405)
 

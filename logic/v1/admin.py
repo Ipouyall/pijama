@@ -15,4 +15,4 @@ admin.site.register(TreatmentRequest)
 admin.site.register(Viza)
 admin.site.register(Hospital)
 admin.site.register(PaymentRequest)
-
+admin.site.register(ExtendedUser)
