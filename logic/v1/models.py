@@ -14,14 +14,20 @@ class Hospital(models.Model):
         return self.hospital_name
 
 class Doctor(models.Model):
-    cor_user = models.OneToOneField(User,verbose_name='related_user',on_delete=models.CASCADE,related_name='user_doc')
+    related_user = models.OneToOneField(User,verbose_name='related_user',on_delete=models.CASCADE,related_name='user_doc')
     practice = models.CharField(max_length=200)
     years_of_experience = models.IntegerField(default=0)
-    cor_hospitals = models.ManyToManyField(Hospital,verbose_name='hospitals',related_name='hospital_doc')
+    related_hospitals = models.ManyToManyField(Hospital,verbose_name='hospitals',related_name='hospital_doc')
     def __str__(self):
-        return self.cor_user.username
+        return self.related_user.username
+
+class Patient(models.Model):
+    related_user = models.OneToOneField(User,verbose_name='related_user',on_delete=models.CASCADE,related_name='user_patient')
+    def __str__(self):
+        return self.related_user.username
+
 class Support(models.Model):
-    cor_user = models.OneToOneField(User,verbose_name='cor_user',on_delete=models.CASCADE,related_name='support_doc')
+    cor_user = models.OneToOneField(User,verbose_name='related_user',on_delete=models.CASCADE,related_name='support_doc')
     years_of_experience = models.IntegerField(default=0)
     def __str__(self):
         return self.cor_user.username
@@ -53,6 +59,7 @@ class Package(models.Model):
 class Document(models.Model):
     document_title =models.CharField(max_length=200) 
     description = models.CharField(max_length=200)
+    content   = models.CharField(max_length=10000,null=True,blank=True)
     related_requirement = models.ForeignKey(Requirement, verbose_name="related_reqs", on_delete=models.DO_NOTHING,
                                             null=True,blank=True)
     def __str__(self):
@@ -89,8 +96,8 @@ class Viza(models.Model):
     related_payment_request = models.OneToOneField(PaymentRequest,verbose_name="related_payment_request",on_delete=models.CASCADE,null=True,blank=True)
 
 class TreatmentRequest(models.Model):
-    related_package= models.ForeignKey(Package,verbose_name="tr_related_package",on_delete=models.DO_NOTHING)
-    related_user = models.ForeignKey(User,verbose_name="tr_related_user",on_delete=models.CASCADE)
+    related_package= models.ForeignKey(Package,verbose_name="tr_related_package",on_delete=models.DO_NOTHING,null=True,blank=True)
+    related_patient = models.ForeignKey(Patient,verbose_name="tr_related_user",on_delete=models.CASCADE,null=True,blank=True)
     related_documents = models.ManyToManyField(Document,verbose_name="related_documents")
     related_viza  =models.OneToOneField(Viza,null=True,blank=True,on_delete=models.CASCADE)
     submitted_date = models.DateTimeField(auto_created=True)

@@ -11,8 +11,35 @@ from django.contrib.auth import authenticate
 from django.contrib.sessions.models import Session
 from django.forms import model_to_dict
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db.models import Model
+from django.db.models import Model    
+class PackageHandler():
+    @staticmethod
+    def get_packages(request):
+        request_json = json.loads(request.body)
+        disease_id = request_json.get("disease_id")
+        if (disease_id != None):
+            packages = Package.objects.select_related('disease').filter(disease=disease_id)
+        else:
+            packages = Package.objects.disease.all()    
+        serialized_packages = json.dumps(list(packages),cls=ExtendedEncoder)
+        return JsonResponse(json.loads(serialized_packages) ,safe=False)
+    @staticmethod
+    def get_package(request):
+        request_json = json.loads(request.body)
+        id = request_json["id"]
+        package = Package.objects.filter(pk=id)[0]
+        serialized_package = json.dumps(package,cls=ExtendedEncoder)
+        return JsonResponse(json.loads(serialized_package),safe=False)
+    @staticmethod
+    def get_package_requirements(request):
+        request_json = json.loads(request.body)
+        id = request_json["id"]
+        reqs = Requirement.objects.filter(requirements=id)
+        serialized_packages = serializers.serialize("json",reqs)
+        return JsonResponse(json.loads(serialized_packages) ,safe=False)
 
+
+    
 class ExtendedEncoder(DjangoJSONEncoder):
     def default(self, o):
         if isinstance(o, Model):
@@ -64,28 +91,4 @@ def login(request):
                                  ,"code ": 401,})
     return HttpResponse(request,"Error Pages/405.html",status = 405)
 
-def get_packages(request):
-    request_json = json.loads(request.body)
-    disease_id = request_json.get("disease_id")
-    if (disease_id != None):
-        packages = Package.objects.select_related('disease').filter(disease=disease_id)
-    else:
-        packages = Package.objects.disease.all()
-    
-    
-    serialized_packages = json.dumps(list(packages),cls=ExtendedEncoder)
-    return JsonResponse(json.loads(serialized_packages) ,safe=False)
 
-def get_package(request):
-    request_json = json.loads(request.body)
-    id = request_json["id"]
-    package = Package.objects.filter(pk=id)[0]
-    serialized_package = json.dumps(package,cls=ExtendedEncoder)
-    return JsonResponse(json.loads(serialized_package),safe=False)
-
-def get_package_requirements(request):
-    request_json = json.loads(request.body)
-    id = request_json["id"]
-    reqs = Requirement.objects.filter(requirements=id)
-    serialized_packages = serializers.serialize("json",reqs)
-    return JsonResponse(json.loads(serialized_packages) ,safe=False)
