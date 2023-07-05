@@ -1,7 +1,14 @@
 from django.contrib import admin
-from v1.models import *
+from .system_models.ExtendedUser import *
+from .system_models.Geography import *
+from .system_models.Payment import * 
+from .system_models.Hotel import *
+from .system_models.Medical import * 
+from .system_models.TreatmentRequest import * 
+from .system_models.Viza import * 
 
 # Register your models here.
+
 admin.site.register(Package)
 admin.site.register(Document)
 admin.site.register(Requirement)
@@ -17,3 +24,8 @@ admin.site.register(Hospital)
 admin.site.register(PaymentRequest)
 admin.site.register(ExtendedUser)
 admin.site.register(Patient)
+admin.site.register(Hotel)
+admin.site.register(HotelClass)
+admin.site.register(PackageClass)
+
+

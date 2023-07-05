@@ -1,7 +1,14 @@
 from django.shortcuts import render
 from django.http import HttpResponse,JsonResponse
 from django.core import serializers
-from v1.models import TreatmentRequest,ExtendedUser,Package,Requirement,Document,Disease,Doctor
+from .database.query import QueryBuilder
+from .system_models.ExtendedUser import ExtendedUser
+from .system_models.Geography import *
+from .system_models.Payment import * 
+from .system_models.Medical import * 
+from .system_models.TreatmentRequest import * 
+from .system_models.Viza import * 
+
 # from django.contrib.users
 from django.contrib.auth import logout                           
 import logging
@@ -15,34 +22,18 @@ from v1.encoders import ExtendedEncoder
 import random,string
 from datetime import datetime
 import telegram
+import requests
 from django.core.mail import send_mail
 TELEGRAM_BOT_API_TOKEN = "6316780921:AAHvZw68iEUCOaTPmRunibA3GyH9--jlbdY"
 logger = logging.getLogger(__name__)
 class Notifier():
     @staticmethod
     def notify(user_id,message):
-        bot =telegram.Bot(token=TELEGRAM_BOT_API_TOKEN)
-        # user_chat_id = 
-        bot.send_message(user_chat_id=user_id,text=message) 
+       bot_token = '6316780921:AAHvZw68iEUCOaTPmRunibA3GyH9--jlbdY'
+       url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
+       params = {'chat_id': 72309932, 'text': message}
+       return requests.post(url, params=params)
 
-class QueryBuilder():
-    @staticmethod
-    def insert_treatment_request(pid,uid,td_ids):
-        last_updated = datetime.now()
-        ntr = TreatmentRequest(related_package_id =pid,related_patient_id= uid,last_updated=last_updated)
-        ntr.save()
-        for td_id in td_ids:
-            ntr.related_documents.add(td_id)
-        ntr.save()
-        return ntr.id
-    #-----------------------------------------------------------#
-    def insert_docs(document_title,document_content,related_requirement_id):
-        nd = Document(document_title=document_title,content=document_content,related_requirement_id=related_requirement_id)
-        nd.save()
-        return nd.id
-    #-----------------------------------------------------------#
-    def get_user_by_token(token):
-        return ExtendedUser.objects.filter(token = token).first()
 
 def gen_token(token_length=32):
     return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(token_length))
@@ -64,16 +55,55 @@ class TreatmentRequestHandler():
     @staticmethod
     def create_treatment_request(pid,uid,td_ids):
         return QueryBuilder.insert_treatment_request(pid,uid,td_ids)
-    def get_treatment_requests():
-        return
+    def get_treatment_request(tr_id,user_id=None):
+        return QueryBuilder.get_treatment_request(tr_id,user_id)
+    def update_treatment_request_with_hotel_id(tr_id,hotel_id):
+        treatment_request = TreatmentRequestHandler.get_treatment_request(tr_id)
+        treatment_request.reserved_hotel_id=hotel_id
+        treatment_request.save()
+        return True     
+class AccomadationHandler():
+    def get_hotels(request):
+            request_json = json.loads(request.body)
+            package_id = request_json["package_id"]
+            package = QueryBuilder.get_package(package_id)
+            if (package != None):
+                related_package_city_id =package.city.id
+                filtered_hotels =list (QueryBuilder.get_hotels(related_package_city_id))
+                hotels_json = json.dumps(filtered_hotels,cls=ExtendedEncoder)
+                return JsonResponse(json.loads(hotels_json) ,safe=False)
+            else:
+                response = JsonResponse({"message":"Package does not exist"},safe=False)
+                response.status_code = 404 
+                return response
+            
+    def reserve_hotel(request):
+            request_json = json.loads(request.body)
+            hotel_id = request_json.get("hotel_id")
+            hotel = QueryBuilder.get_hotel(hotel_id)
+            if (hotel != None):
+                hotel.capacity=hotel.capacity -1 
+                if (hotel.capacity < 0):
+                    return False
+                else:
+                    hotel.save()
+                    return True
+            else:
+                return False
 
 class Controller():
+    def get_user_by_token(request):
+        request_json = json.loads(request.body)
+        if (request_json.get("token")):
+            return QueryBuilder.get_user_by_token(request_json["token"])
+        else:
+            return None
     @staticmethod
     def upload_user_docs(request):
         if (request.method == 'POST'):
             request_json = json.loads(request.body)
             pid    = request_json["pid"]
-            t_user=QueryBuilder.get_user_by_token(request_json["token"])
+            t_user=Controller.get_user_by_token(request)
             uid  = 0
             if (t_user != None):
                 uid = t_user.related_user.id
@@ -87,21 +117,56 @@ class Controller():
                                  "status": 200})
         else:
             return JsonResponse({"status":401})
+    
+    @staticmethod
+    def handle_hotel_request(request):
+        if (request.method =='GET'):
+            return AccomadationHandler.get_hotels(request)
+        elif (request.method == 'POST'):
+            t_user=Controller.get_user_by_token(request)
+            if (t_user !=None):
+                    request_json =json.loads(request.body)
+                    treatment_request_id = request_json.get("tr_id")
+                    treatment_request = TreatmentRequestHandler.get_treatment_request                    (treatment_request_id,t_user.id)
+                    if (treatment_request == None):
+                        response =JsonResponse({"message":"Treatment request was not found"})
+                        response.status_code = 403
+                        return response
+                    else:
+                        reserve = AccomadationHandler.reserve_hotel(request)
+                        if (reserve):
+                            hotel_id=request_json.get("hotel_id")
+                            TreatmentRequestHandler.update_treatment_request_with_hotel_id(treatment_request_id,hotel_id)
+                            response =JsonResponse({"message":"Reserved and added hotel to treatment request "})
+                            return response
+                        else:
+                            response =JsonResponse({"message":"Hotel was not found or not available for reservation"})
+                            response.status_code = 403
+                            return response
+            else:
+                response = JsonResponse({"message":"Unauthorized"})
+                response.status_code=401
+                return response
+        else:
+            response = JsonResponse({"message":"Method not allowed"},safe=False)
+            response.status_code = 405 
+            return response
+        
+        
 class PackageHandler():
     @staticmethod
     def get_packages(request):
-        packages = list(Package.objects.select_related('related_doctor', 'related_hospital', 'disease').all())
+        packages = list(QueryBuilder.get_all_packages())
         serialized_packages = json.dumps(list(packages),cls=ExtendedEncoder)
         return JsonResponse(json.loads(serialized_packages) ,safe=False)
 
-    @staticmethod
     def get_package(request):
         request_json = json.loads(request.body)
         id = request_json["id"]
-        package = Package.objects.filter(pk=id)[0]
+        package = QueryBuilder.get_package(id)
         serialized_package = json.dumps(package,cls=ExtendedEncoder)
         return JsonResponse(json.loads(serialized_package),safe=False)
-    @staticmethod
+    
     def get_package_requirements(request):
         json_request = json.loads(request.body)
         id = json_request["id"]
@@ -147,7 +212,7 @@ class AuthenticationHandler():
                     t_user.token = gen_token()
                     t_user.save()
                     return JsonResponse({"message":"Logged in ",
-                                        "token" : t_user.token
+                                         "token" : t_user.token
                                         ,"code ": 200,})
         return HttpResponse(request,"Error Pages/405.html",status = 405)
 
