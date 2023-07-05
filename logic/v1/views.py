@@ -28,10 +28,10 @@ TELEGRAM_BOT_API_TOKEN = "6316780921:AAHvZw68iEUCOaTPmRunibA3GyH9--jlbdY"
 logger = logging.getLogger(__name__)
 class Notifier():
     @staticmethod
-    def notify(user_id,message):
+    def notify(chat_id,message):
        bot_token = '6316780921:AAHvZw68iEUCOaTPmRunibA3GyH9--jlbdY'
        url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
-       params = {'chat_id': 72309932, 'text': message}
+       params = {'chat_id': chat_id, 'text': message}
        return requests.post(url, params=params)
 
 
