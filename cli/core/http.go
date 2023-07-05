@@ -3,8 +3,14 @@ package core
 import (
 	"bytes"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	_package "saaj/package"
+)
+
+const (
+	Domein    = "127.0.0.1:8000"
+	LoginPath = "/api/v1/login"
 )
 
 func NewREST(domain string) *REST {
@@ -32,7 +38,7 @@ func (R *REST) Authenticate(username, password string) (success bool, prompt str
 	requestBodyBytes, _ := json.Marshal(requestBody)
 
 	// Create the HTTP request
-	url := R.Domain + "/api/v1/login"
+	url := R.Domain + LoginPath
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(requestBodyBytes))
 	req.Header.Set("Content-Type", "application/json")
 
@@ -79,8 +85,33 @@ func (R *REST) Authenticate(username, password string) (success bool, prompt str
 }
 
 func (R *REST) GetPackage() []_package.Package {
-	//TODO implement me
-	panic("implement me")
+	// Send the GET request
+	url := R.Domain + "/api/v1/packages"
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+
+	// Read the response body
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil
+	}
+
+	// Check the response status code
+	if resp.StatusCode != http.StatusOK {
+		return nil
+	}
+
+	// Parse the response body into a slice of Package
+	var packages []_package.Package
+	err = json.Unmarshal(body, &packages)
+	if err != nil {
+		return nil
+	}
+
+	return packages
 }
 
 func (R *REST) RequestPackage(packID int) _package.Requirements {
