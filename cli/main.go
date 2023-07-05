@@ -1,9 +1,12 @@
 package main
 
 import (
+	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
 	"log"
+	"os"
 	"saaj/input"
+	"saaj/menu"
 )
 
 func login() {
@@ -27,4 +30,12 @@ func main() {
 	defer f.Close()
 
 	login()
+
+	board := menu.NewBoard()
+	board.InitLists()
+	p := tea.NewProgram(board)
+	if _, err := p.Run(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }

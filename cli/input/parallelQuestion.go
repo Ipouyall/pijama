@@ -1,7 +1,6 @@
 package input
 
 import (
-	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -81,6 +80,8 @@ func (pq ParallelQuestion) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if !pq.done {
 		pq.questions[pq.curser].input.Update(msg)
+	} else {
+		return pq, tea.Quit
 	}
 
 	return pq, cmd
@@ -89,9 +90,9 @@ func (pq ParallelQuestion) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (pq ParallelQuestion) View() string {
 	if pq.done {
 		var output string
-		for _, q := range pq.questions {
-			output += fmt.Sprintf("%s: %s\n", q.question, q.answer)
-		}
+		//for _, q := range pq.questions {
+		//	output += fmt.Sprintf("%s: %s\n", q.question, q.answer)
+		//}
 		return output
 	}
 
