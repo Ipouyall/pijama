@@ -61,6 +61,11 @@ class TreatmentRequestHandler():
         treatment_request = TreatmentRequestHandler.get_treatment_request(tr_id)
         treatment_request.reserved_hotel_id=hotel_id
         treatment_request.save()
+        return True
+    def update_treatment_request_with_visa_serial_no(tr_id,visa_serial_no):
+        treatment_request = TreatmentRequestHandler.get_treatment_request(tr_id)
+        treatment_request.related_visa=visa_serial_no
+        treatment_request.save()
         return True     
 class AccomadationHandler():
     def get_hotels(request):
@@ -90,15 +95,92 @@ class AccomadationHandler():
                     return True
             else:
                 return False
+class VisaHandler():
+    def get_visa_requirements():
+        serialized_requirments = json.dumps(list(QueryBuilder.get_visa_requirements()),cls=ExtendedEncoder)
+        return JsonResponse(json.loads(serialized_requirments) ,safe=False)
+    
+    def create_empty_visa(user_id):
+        serial_no = gen_token(64)
+        new_visa =Viza(serial_no=serial_no,related_user_id=user_id)
+        new_visa.save()
+        return new_visa
+    
+    def add_visa_docs(request_json,serial_no):
+        documents = request_json["documents"] # Map of document contents and requirement id and document title
+        for document in documents:
+                        title = document["title"]
+                        related_req_id = document["related_req_id"]
+                        content = document ["content"]
+                        id = QueryBuilder.insert_visa_doc(title,content,related_req_id,serial_no)
+        return True
 
+    def check_viza(serial_no,user_token):
+        viza= QueryBuilder.get_visa(serial_no,user_token)
+        return viza            
+    
 class Controller():
+    @staticmethod
     def get_user_by_token(request):
         request_json = json.loads(request.body)
         if (request_json.get("token")):
             return QueryBuilder.get_user_by_token(request_json["token"])
         else:
             return None
-    @staticmethod
+    def handle_visa_request(request):
+        if (request.method =='GET'):
+            return VisaHandler.get_visa_requirements()
+        if (request.method == 'POST'):
+            request_json = json.loads(request.body)
+            tr_user = Controller.get_user_by_token(request)
+            if (tr_user != None):
+                visa = VisaHandler.create_empty_visa(tr_user.id)
+                VisaHandler.add_visa_docs(request_json,visa.serial_no)
+                visa.save()
+                return JsonResponse({"status":200,
+                                     "message":"Visa request pending succesfully",
+                                     "serial_no":visa.serial_no})  
+
+            else:
+             return JsonResponse({"status":403,
+                                     "message":"Not Authorized"})  
+        else:
+            response = JsonResponse({"message":"Method not allowed"},safe=False)
+            response.status_code = 405 
+            return response
+
+
+    def get_visa_status(request):
+     
+        if (request.method == 'POST'):
+            request_json = json.loads(request.body)
+            serial_no = request_json.get("serial_no")
+            tr_user = Controller.get_user_by_token(request)
+            if (tr_user != None):
+                message = ''
+                # Todo potential fix
+                http_code = 200
+                visa=VisaHandler.check_viza(serial_no,tr_user.token)
+                if (visa == None):
+                    message = "There was no visa try uploading and applying with the corresponding documents"
+                elif (visa.status_id == Expired_Visa):
+                    message =  "Your visa has expired try again by applying for another visa"
+                elif (visa.status_id == Verifying_Visa):
+                    message =  "Your Visa is being verified please wait"
+                elif (visa.status_id == Active_Visa):
+                    message = "You already have an active visa and don't need to apply for a visa"
+                
+                response = JsonResponse({"message":message,
+                                         "serial_no":serial_no})
+                response.status_code==http_code
+                return response
+            else:
+             return JsonResponse({"status":403,
+                                     "message":"Not Authorized"})   
+        else:
+            response = JsonResponse({"message":"Method not allowed"},safe=False)
+            response.status_code = 405 
+            return response
     def upload_user_docs(request):
         if (request.method == 'POST'):
             request_json = json.loads(request.body)
@@ -110,7 +192,7 @@ class Controller():
                 td_ids = DocumentHandler.submit_docs(request_json)
             else:
                 return JsonResponse({"status":403,
-                                     "message":"Not authenticated"})
+                                     "message":"Not Authorized"})
                  
             tr_id = TreatmentRequestHandler.create_treatment_request(uid,pid,td_ids)
             return JsonResponse({"tr_id":tr_id,
@@ -118,7 +200,6 @@ class Controller():
         else:
             return JsonResponse({"status":401})
     
-    @staticmethod
     def handle_hotel_request(request):
         if (request.method =='GET'):
             return AccomadationHandler.get_hotels(request)
@@ -127,7 +208,7 @@ class Controller():
             if (t_user !=None):
                     request_json =json.loads(request.body)
                     treatment_request_id = request_json.get("tr_id")
-                    treatment_request = TreatmentRequestHandler.get_treatment_request                    (treatment_request_id,t_user.id)
+                    treatment_request = TreatmentRequestHandler.get_treatment_request(treatment_request_id,t_user.id)
                     if (treatment_request == None):
                         response =JsonResponse({"message":"Treatment request was not found"})
                         response.status_code = 403
@@ -185,7 +266,7 @@ class PackageHandler():
             requirements=[]
         serialized_requirments = json.dumps(list(requirements),cls=ExtendedEncoder)
         return JsonResponse(json.loads(serialized_requirments) ,safe=False)
-    
+
 class AuthenticationHandler():
     @staticmethod
     def logout(request):
@@ -202,7 +283,7 @@ class AuthenticationHandler():
                 return JsonResponse({"message":"Logged out"
                                     ,"code ": 200})
         return HttpResponse(request,"Error Pages/405.html",status = 405)
-    @staticmethod
+
     def login(request):
         if (request.method == 'POST'):
             request_json = json.loads(request.body)

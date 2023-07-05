@@ -6,7 +6,8 @@ from .system_models.Hotel import *
 from .system_models.Medical import * 
 from .system_models.TreatmentRequest import * 
 from .system_models.Viza import * 
-
+from .system_models.Document import *
+from .system_models.Requirement import *
 # Register your models here.
 
 admin.site.register(Package)
@@ -28,4 +29,5 @@ admin.site.register(Hotel)
 admin.site.register(HotelClass)
 admin.site.register(PackageClass)
 admin.site.register(SysAdmin)
-
+admin.site.register(VizaRequirement)
+admin.site.register(VizaDocument)

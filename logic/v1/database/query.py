@@ -4,7 +4,8 @@ from ..system_models.Payment import *
 from ..system_models.Medical import * 
 from ..system_models.TreatmentRequest import * 
 from ..system_models.Viza import * 
-
+from ..system_models.Requirement import VizaRequirement,Requirement
+from ..system_models.Document import VizaDocument
 class QueryBuilder():
     @staticmethod
     def get_treatment_request(tr_id,user_id=None):
@@ -26,6 +27,10 @@ class QueryBuilder():
         nd = Document(document_title=document_title,content=document_content,related_requirement_id=related_requirement_id)
         nd.save()
         return nd.id
+    def insert_visa_doc(document_title,document_content,related_requirement_id,related_visa_id):
+        nd = VizaDocument(related_visa_id=related_visa_id,document_title=document_title,content=document_content,related_requirement_id=related_requirement_id)
+        nd.save()
+        return nd.id
     #-----------------------------------------------------------#
     def get_hotels(city_id):
         return Hotel.objects.filter(city__id=city_id)
@@ -43,4 +48,9 @@ class QueryBuilder():
     
     #-----------------------------------------------------------#
     def get_sys_admins_chat_id():
-        return SysAdmin.objects.select_related('related_user').all().values_list('chat_id').all()
+        return SysAdmin.objects.all().values_list('related_user__chat_id').all()
+    #-----------------------------------------------------------#
+    def get_visa_requirements():
+        return VizaRequirement.objects.all()
+    def get_visa(serial_no,user_token):
+        return Viza.objects.filter(serial_no=serial_no,related_user__related_user__token=user_token).first()

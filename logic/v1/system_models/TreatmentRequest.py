@@ -8,12 +8,8 @@ from .ExtendedUser import Doctor,Patient,Support
 from .Geography import City
 from .Viza import Viza
 from .Hotel import Hotel
-
-class Requirement(models.Model):
-    description = models.CharField(max_length=200)
-    name        = models.CharField(max_length=200)
-    def __str__(self):
-        return self.name
+from .Requirement import Requirement
+from .Document import Document
 
 class PackageClass(models.Model):
     p_class = models.CharField(max_length=200)
@@ -33,13 +29,6 @@ class Package(models.Model):
     def __str__(self):
         return self.package_name    
 
-class Document(models.Model):
-    document_title =models.CharField(max_length=200) 
-    content   = models.CharField(max_length=10000,null=True,blank=True)
-    related_requirement = models.ForeignKey(Requirement, verbose_name="related_reqs", on_delete=models.DO_NOTHING,
-                                            null=True,blank=True)
-    def __str__(self):
-        return self.document_title
 
 class TreatmentRequestStatus(models.Model):
     status = models.CharField(max_length=200)
@@ -50,7 +39,6 @@ class TreatmentRequest(models.Model):
     related_package= models.ForeignKey(Package,verbose_name="tr_related_package",on_delete=models.DO_NOTHING,null=True,blank=True)
     related_patient = models.ForeignKey(Patient,verbose_name="tr_related_user",on_delete=models.CASCADE,null=True,blank=True)
     related_documents = models.ManyToManyField(Document,verbose_name="related_documents",null=True,blank=True)
-    related_viza  =models.OneToOneField(Viza,null=True,blank=True,on_delete=models.CASCADE)
     submitted_date = models.DateTimeField(default=timezone.now)
     last_updated = models.DateTimeField()
     status = models.ForeignKey(TreatmentRequestStatus,default=1,on_delete=models.DO_NOTHING)
