@@ -11,3 +11,6 @@ type Package struct {
 	Hospital    string `json:"hospital"`
 	Class       string `json:"package_class"`
 }
+
+type Requirements struct {
+}

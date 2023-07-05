@@ -6,7 +6,7 @@ type Core interface {
 	Authenticate(username, password string) (bool, string)
 
 	GetPackage() []_package.Package
-	RequestPackage(packID int) bool // in this call, we need to get requirements
+	RequestPackage(packID int) _package.Requirements
 
 	SubmitDocument(docID int, name, content string) bool
 
