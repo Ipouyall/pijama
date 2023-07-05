@@ -32,7 +32,7 @@ func main() {
 	login()
 
 	board := menu.NewBoard()
-	board.InitLists()
+	board.InitBaseMenu()
 	p := tea.NewProgram(board)
 	if _, err := p.Run(); err != nil {
 		fmt.Println(err)

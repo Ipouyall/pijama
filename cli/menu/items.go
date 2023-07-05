@@ -1,17 +1,17 @@
 package menu
 
-type status int
+type index int
 
-func (s status) getNext() status {
-	if s == done {
-		return todo
+func (s index) getNext(last index) index {
+	if s == last {
+		return first
 	}
 	return s + 1
 }
 
-func (s status) getPrev() status {
-	if s == todo {
-		return done
+func (s index) getPrev(last index) index {
+	if s == first {
+		return last
 	}
 	return s - 1
 }
@@ -21,26 +21,33 @@ const margin = 4
 var board *Board
 
 const (
-	todo status = iota
-	inProgress
-	done
+	first index = iota
+	second
+	third
+	forth
 )
 
 type Item struct {
-	status      status
+	idx         index
 	title       string
 	description string
+	max_idx     index
 }
 
-func NewTask(status status, title, description string) Item {
-	return Item{status: status, title: title, description: description}
+func NewItem(index, max index, title, description string) Item {
+	return Item{
+		idx:         index,
+		title:       title,
+		description: description,
+		max_idx:     max,
+	}
 }
 
 func (t *Item) Next() {
-	if t.status == done {
-		t.status = todo
+	if t.idx == t.max_idx {
+		t.idx = first
 	} else {
-		t.status++
+		t.idx++
 	}
 }
 

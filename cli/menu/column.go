@@ -10,11 +10,12 @@ import (
 const APPEND = -1
 
 type column struct {
-	focus  bool
-	status status
-	list   list.Model
-	height int
-	width  int
+	focus      bool
+	status     index
+	list       list.Model
+	height     int
+	width      int
+	last_index index
 }
 
 func (c *column) Focus() {
@@ -29,14 +30,19 @@ func (c *column) Focused() bool {
 	return c.focus
 }
 
-func newColumn(status status) column {
+func newColumn(current, last index) column {
 	var focus bool
-	if status == todo {
+	if current == first {
 		focus = true
 	}
 	defaultList := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
 	defaultList.SetShowHelp(false)
-	return column{focus: focus, status: status, list: defaultList}
+	return column{
+		focus:      focus,
+		status:     current,
+		list:       defaultList,
+		last_index: last,
+	}
 }
 
 // Init does initial setup for the column.
@@ -130,7 +136,7 @@ func (c *column) MoveToNext() tea.Cmd {
 	}
 	// move item
 	c.list.RemoveItem(c.list.Index())
-	task.status = c.status.getNext()
+	task.idx = c.status.getNext(c.last_index)
 
 	// refresh list
 	var cmd tea.Cmd
