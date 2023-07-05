@@ -1,4 +1,4 @@
-from ..system_models.ExtendedUser import ExtendedUser
+from ..system_models.ExtendedUser import ExtendedUser, SysAdmin
 from ..system_models.Geography import *
 from ..system_models.Payment import * 
 from ..system_models.Medical import * 
@@ -40,3 +40,7 @@ class QueryBuilder():
     #-----------------------------------------------------------#
     def get_user_by_token(token):
         return ExtendedUser.objects.filter(token = token).first()
+    
+    #-----------------------------------------------------------#
+    def get_sys_admins_chat_id():
+        return SysAdmin.objects.select_related('related_user').all().values_list('chat_id').all()

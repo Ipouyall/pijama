@@ -27,5 +27,5 @@ admin.site.register(Patient)
 admin.site.register(Hotel)
 admin.site.register(HotelClass)
 admin.site.register(PackageClass)
-
+admin.site.register(SysAdmin)
 

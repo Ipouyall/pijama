@@ -18,7 +18,7 @@ from django.contrib.auth import authenticate
 from django.contrib.sessions.models import Session
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import Model   
-from v1.encoders import ExtendedEncoder
+from v1.encoders import ExtendedEncoder, ModelToDict
 import random,string
 from datetime import datetime
 import telegram
@@ -157,13 +157,21 @@ class PackageHandler():
     @staticmethod
     def get_packages(request):
         packages = list(QueryBuilder.get_all_packages())
-        serialized_packages = json.dumps(list(packages),cls=ExtendedEncoder)
+        packages_dict = ModelToDict(list(packages))
+        for package_dict in packages_dict:
+            package_dict['city'] = package_dict['city']['city_name']
+            package_dict['related_doctor'] = package_dict['related_doctor']['related_user']['related_user']['username']
+            package_dict['related_hospital'] = package_dict['related_hospital']['hospital_name']
+            package_dict['disease'] = package_dict['disease']['disease_name']
+            del package_dict['requirements']
+        serialized_packages = json.dumps(list(packages_dict),cls=ExtendedEncoder)
         return JsonResponse(json.loads(serialized_packages) ,safe=False)
 
     def get_package(request):
         request_json = json.loads(request.body)
         id = request_json["id"]
         package = QueryBuilder.get_package(id)
+        
         serialized_package = json.dumps(package,cls=ExtendedEncoder)
         return JsonResponse(json.loads(serialized_package),safe=False)
     

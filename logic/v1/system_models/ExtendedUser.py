@@ -27,3 +27,8 @@ class Support(models.Model):
     years_of_experience = models.IntegerField(default=0)
     def __str__(self):
         return self.related_user.related_user.username
+
+class SysAdmin(models.Model):
+    related_user = models.OneToOneField(ExtendedUser,verbose_name='related_user',on_delete=models.CASCADE,related_name='system_admin')
+    def __str__(self):
+        return self.related_user.related_user.username
