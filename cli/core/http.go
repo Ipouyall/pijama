@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
-	_package "saaj/package"
+	"saaj/core/data"
 )
 
 const (
-	Domein    = "127.0.0.1:8000"
-	LoginPath = "/api/v1/login"
+	Domain       = "127.0.0.1:8000"
+	LoginPath    = "/api/v1/login"
+	PackagesPath = "/api/v1/packages"
 )
 
 func NewREST(domain string) *REST {
@@ -20,7 +21,7 @@ func NewREST(domain string) *REST {
 type REST struct {
 	Domain           string
 	Token            string
-	TreatmentPackage _package.Package
+	TreatmentPackage data.Package
 }
 
 func (R *REST) Authenticate(username, password string) (success bool, prompt string) {
@@ -58,7 +59,7 @@ func (R *REST) Authenticate(username, password string) (success bool, prompt str
 
 		// Parse the response body
 		var responseBody map[string]string
-		json.NewDecoder(resp.Body).Decode(&responseBody)
+		_ = json.NewDecoder(resp.Body).Decode(&responseBody)
 
 		// Extract the token
 		R.Token = responseBody["token"]
@@ -71,12 +72,11 @@ func (R *REST) Authenticate(username, password string) (success bool, prompt str
 
 		// Parse the response body
 		var responseBody map[string]string
-		json.NewDecoder(resp.Body).Decode(&responseBody)
+		_ = json.NewDecoder(resp.Body).Decode(&responseBody)
 
 		// Extract the error message
-		error := responseBody["error"]
+		prompt = responseBody["error"]
 
-		prompt = error
 		return
 	}
 	// Unexpected response status code
@@ -84,9 +84,9 @@ func (R *REST) Authenticate(username, password string) (success bool, prompt str
 	return
 }
 
-func (R *REST) GetPackage() []_package.Package {
+func (R *REST) GetPackage() []data.Package {
 	// Send the GET request
-	url := R.Domain + "/api/v1/packages"
+	url := R.Domain + PackagesPath
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil
@@ -105,7 +105,7 @@ func (R *REST) GetPackage() []_package.Package {
 	}
 
 	// Parse the response body into a slice of Package
-	var packages []_package.Package
+	var packages []data.Package
 	err = json.Unmarshal(body, &packages)
 	if err != nil {
 		return nil
@@ -114,7 +114,7 @@ func (R *REST) GetPackage() []_package.Package {
 	return packages
 }
 
-func (R *REST) RequestPackage(packID int) _package.Requirements {
+func (R *REST) RequestPackage(packID int) data.Requirement {
 	//TODO implement me
 	panic("implement me")
 }
@@ -124,7 +124,7 @@ func (R *REST) SubmitDocument(docID int, name, content string) bool {
 	panic("implement me")
 }
 
-func (R *REST) GetHotels() []_package.HotelRoom {
+func (R *REST) GetHotels() []data.HotelRoom {
 	//TODO implement me
 	panic("implement me")
 }
@@ -144,7 +144,7 @@ func (R *REST) SubmitVisa(visaID int) bool {
 	panic("implement me")
 }
 
-func (R *REST) GetBill() _package.Bill {
+func (R *REST) GetBill() data.Bill {
 	//TODO implement me
 	panic("implement me")
 }

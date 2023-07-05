@@ -1,12 +1,12 @@
 .PHONY: all deps install test
 
-all: deps test install
+all: deps test
 
 deps:
-	go get -u ./...
+	@go get -u ./...
 
-install:
+install: deps
 	go install ./...
 
 test:
-	go test -v ./...
+	@go test -v saaj/core

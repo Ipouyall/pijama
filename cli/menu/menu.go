@@ -12,7 +12,7 @@ func (b *Board) InitBaseMenu() {
 
 	b.cols[first].list.Title = "Package"
 	b.cols[first].list.SetItems([]list.Item{
-		NewItem(first, b.last_index, "Packages", "to see and choose a package"),
+		NewItem(first, b.last_index, "Packages", "to see and choose a data"),
 		NewItem(first, b.last_index, "Upload Documents", "upload your docs"),
 		NewItem(first, b.last_index, "Reserve hotel", "reserve a hotel"),
 	})

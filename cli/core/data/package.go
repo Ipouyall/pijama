@@ -1,4 +1,4 @@
-package _package
+package data
 
 type Package struct {
 	ID          int    `json:"id"`
@@ -10,7 +10,4 @@ type Package struct {
 	Doctor      string `json:"doctor"`
 	Hospital    string `json:"hospital"`
 	Class       string `json:"package_class"`
-}
-
-type Requirements struct {
 }

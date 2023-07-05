@@ -1,12 +1,11 @@
-package test
+package core
 
 import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
-	"saaj/core"
-	_package "saaj/package"
+	"saaj/core/data"
 	"testing"
 )
 
@@ -15,7 +14,7 @@ func TestAuthenticate(t *testing.T) {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		success := true
 		// Check the request URL
-		if r.URL.Path != core.LoginPath {
+		if r.URL.Path != LoginPath {
 			t.Errorf("Unexpected URL: %s", r.URL.Path)
 			success = false
 		}
@@ -45,19 +44,19 @@ func TestAuthenticate(t *testing.T) {
 			response := map[string]string{
 				"token": "<auth-token>",
 			}
-			json.NewEncoder(w).Encode(response)
+			_ = json.NewEncoder(w).Encode(response)
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)
 			response := map[string]string{
 				"error": "Invalid credentials",
 			}
-			json.NewEncoder(w).Encode(response)
+			_ = json.NewEncoder(w).Encode(response)
 		}
 	}))
 	defer mockServer.Close()
 
 	// Create an instance of the REST class and set the domain to the mocked server URL
-	rest := core.NewREST(mockServer.URL)
+	rest := NewREST(mockServer.URL)
 
 	// Test case 1: Successful authentication
 	success, prompt := rest.Authenticate("<test-username>", "<test-password>")
@@ -71,7 +70,7 @@ func TestAuthenticate(t *testing.T) {
 		t.Errorf("Unexpected token value: %s", rest.Token)
 	}
 
-	rest = core.NewREST(mockServer.URL)
+	rest = NewREST(mockServer.URL)
 	// Test case 2: Authentication failure
 	success, prompt = rest.Authenticate("<test-username-wrong>", "<test-password-wrong>")
 	if success {
@@ -93,7 +92,7 @@ func TestGetPackage(t *testing.T) {
 		if r.Method != http.MethodGet {
 			t.Errorf("Expected GET request, got %s", r.Method)
 		}
-		if r.URL.Path != "/api/v1/packages" {
+		if r.URL.Path != PackagesPath {
 			t.Errorf("Expected URL /api/v1/packages, got %s", r.URL.Path)
 		}
 
@@ -113,18 +112,18 @@ func TestGetPackage(t *testing.T) {
 		}
 
 		// Send the response
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response)
 	}))
 	defer server.Close()
 
 	// Set the REST domain to the mocked server's URL
-	R := core.NewREST(server.URL)
+	R := NewREST(server.URL)
 
 	// Call the GetPackage method
 	packages := R.GetPackage()
 
 	// Check the returned packages
-	expectedPackages := []_package.Package{
+	expectedPackages := []data.Package{
 		{
 			ID:          1,
 			Name:        "<disease-name>",
