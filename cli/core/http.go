@@ -3,15 +3,18 @@ package core
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"saaj/core/data"
 )
 
 const (
-	Domain       = "127.0.0.1:8000"
-	LoginPath    = "/api/v1/login"
-	PackagesPath = "/api/v1/packages"
+	Domain         = "127.0.0.1:8000"
+	LoginPath      = "/api/v1/login"
+	PackagesPath   = "/api/v1/packages"
+	PackageReqPath = "/api/v1/package_requirements"
+	UploadDocsPath = "/api/v1/upload_user_docs"
 )
 
 func NewREST(domain string) *REST {
@@ -19,15 +22,15 @@ func NewREST(domain string) *REST {
 }
 
 type REST struct {
-	Domain           string
-	Token            string
-	TreatmentPackage data.Package
+	Domain             string
+	Token              string
+	TreatmentPackage   data.Package
+	TreatmentPackageID int
 }
 
-func (R *REST) Authenticate(username, password string) (success bool, prompt string) {
+func (R *REST) Authenticate(username, password string) (err error, prompt string) {
 	if R.Token != "" {
 		// Already authenticated
-		success = true
 		prompt = "Already authenticated."
 		return
 	}
@@ -55,7 +58,6 @@ func (R *REST) Authenticate(username, password string) (success bool, prompt str
 	// Check the response status code
 	if resp.StatusCode == http.StatusOK {
 		// Authentication succeeded
-		success = true
 
 		// Parse the response body
 		var responseBody map[string]string
@@ -68,7 +70,7 @@ func (R *REST) Authenticate(username, password string) (success bool, prompt str
 	}
 	if resp.StatusCode == http.StatusUnauthorized {
 		// Authentication failed
-		success = false
+		err = fmt.Errorf("invalid credential")
 
 		// Parse the response body
 		var responseBody map[string]string
@@ -114,14 +116,84 @@ func (R *REST) GetPackage() []data.Package {
 	return packages
 }
 
-func (R *REST) RequestPackage(packID int) data.Requirement {
-	//TODO implement me
-	panic("implement me")
+func (R *REST) RequestPackage(packID int) (requirements []data.Requirement) {
+	// Prepare the request body
+	requestBody := map[string]interface{}{
+		"id":    packID,
+		"token": R.Token,
+	}
+	requestBodyBytes, _ := json.Marshal(requestBody)
+
+	// Create the HTTP request
+	url := R.Domain + PackageReqPath
+	req, _ := http.NewRequest("GET", url, bytes.NewBuffer(requestBodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+
+	// Send the request and handle the response
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	// Check the response status code
+	if resp.StatusCode != http.StatusOK {
+		return
+	}
+	// Parse the response body
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+	err = json.Unmarshal(body, &requirements)
+	if err != nil {
+		return
+	}
+
+	return
 }
 
-func (R *REST) SubmitDocument(docID int, name, content string) bool {
-	//TODO implement me
-	panic("implement me")
+func (R *REST) SubmitDocuments(packID int, docs []data.Document) (err error) {
+	// Prepare the request body
+	requestBody := map[string]interface{}{
+		"token":     R.Token,
+		"pid":       packID,
+		"documents": docs,
+	}
+	requestBodyBytes, _ := json.Marshal(requestBody)
+
+	// Create the HTTP request
+	url := R.Domain + UploadDocsPath
+	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(requestBodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+
+	// Send the request and handle the response
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	// Check the response status code
+	if resp.StatusCode != http.StatusOK {
+		// Request failed
+		return fmt.Errorf("request failed with status code: %d", resp.StatusCode)
+	}
+
+	// Request succeeded
+	var response struct {
+		TreatmentRequestID int `json:"tr_id"`
+	}
+	// Parse the response body
+	err = json.NewDecoder(resp.Body).Decode(&response)
+	if err != nil {
+		return
+	}
+	R.TreatmentPackageID = response.TreatmentRequestID
+
+	return
 }
 
 func (R *REST) GetHotels() []data.HotelRoom {
@@ -129,17 +201,17 @@ func (R *REST) GetHotels() []data.HotelRoom {
 	panic("implement me")
 }
 
-func (R *REST) ReserveHotel(hotelID int) bool {
+func (R *REST) ReserveHotel(hotelID int) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (R *REST) RequestVisa() bool {
+func (R *REST) RequestVisa() []data.Requirement {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (R *REST) SubmitVisa(visaID int) bool {
+func (R *REST) SubmitVisa(visaID int) error {
 	//TODO implement me
 	panic("implement me")
 }
@@ -149,7 +221,7 @@ func (R *REST) GetBill() data.Bill {
 	panic("implement me")
 }
 
-func (R *REST) PayBill(billID int, code string) bool {
+func (R *REST) PayBill(billID int, code string) error {
 	//TODO implement me
 	panic("implement me")
 }

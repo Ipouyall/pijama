@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -59,9 +60,9 @@ func TestAuthenticate(t *testing.T) {
 	rest := NewREST(mockServer.URL)
 
 	// Test case 1: Successful authentication
-	success, prompt := rest.Authenticate("<test-username>", "<test-password>")
-	if !success {
-		t.Errorf("Expected success to be true, got false")
+	err, prompt := rest.Authenticate("<test-username>", "<test-password>")
+	if err != nil {
+		t.Errorf("Expected successful authentication, got error: %v", err)
 	}
 	if prompt != "" {
 		t.Errorf("Expected prompt to be empty, got '%s'", prompt)
@@ -72,9 +73,9 @@ func TestAuthenticate(t *testing.T) {
 
 	rest = NewREST(mockServer.URL)
 	// Test case 2: Authentication failure
-	success, prompt = rest.Authenticate("<test-username-wrong>", "<test-password-wrong>")
-	if success {
-		t.Errorf("Expected success to be false, got true")
+	err, prompt = rest.Authenticate("<test-username-wrong>", "<test-password-wrong>")
+	if err == nil {
+		t.Errorf("Expected failed authentication, got no error")
 	}
 	expectedPrompt := "Invalid credentials"
 	if prompt != expectedPrompt {
@@ -140,5 +141,183 @@ func TestGetPackage(t *testing.T) {
 
 	if !reflect.DeepEqual(packages, expectedPackages) {
 		t.Errorf("Unexpected packages: got %+v, expected %+v", packages, expectedPackages)
+	}
+}
+
+func TestRequestPackage(t *testing.T) {
+	// Create a mocked server
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check the request details
+		if r.Method != http.MethodGet {
+			t.Errorf("Expected GET request, got %s", r.Method)
+		}
+		if r.URL.Path != PackageReqPath {
+			t.Errorf("Expected URL %s, got %s", PackageReqPath, r.URL.Path)
+		}
+
+		// Check the request body
+		expectedBody := map[string]interface{}{
+			"id":    1,
+			"token": "<auth-token>",
+		}
+		var requestBody map[string]interface{}
+		err := json.NewDecoder(r.Body).Decode(&requestBody)
+		if err != nil {
+			t.Errorf("Failed to decode request body: %v", err)
+		}
+		if id, ok := requestBody["id"].(float64); !ok || int(id) != expectedBody["id"] {
+			t.Errorf("Unexpected request body field 'id': %v", id)
+		}
+		if token, ok := requestBody["token"].(string); !ok || token != expectedBody["token"] {
+			t.Errorf("Unexpected request body field 'token': %v", token)
+		}
+
+		// Prepare a sample response
+		response := []map[string]interface{}{
+			{
+				"id":          1,
+				"name":        "<dummy1>",
+				"description": "<dummy2>",
+			},
+			{
+				"id":          2,
+				"name":        "<dummy3>",
+				"description": "<dummy4>",
+			},
+		}
+
+		// Send the response
+		_ = json.NewEncoder(w).Encode(response)
+	}))
+	defer mockServer.Close()
+
+	// Create an instance of the REST class and set the domain to the mocked server URL
+	R := &REST{
+		Domain: mockServer.URL,
+		Token:  "<auth-token>",
+	}
+
+	// Call the RequestPackage method
+	requirements := R.RequestPackage(1)
+
+	// Check the returned requirements
+	expectedRequirements := []data.Requirement{
+		{
+			ID:          1,
+			Name:        "<dummy1>",
+			Description: "<dummy2>",
+		},
+		{
+			ID:          2,
+			Name:        "<dummy3>",
+			Description: "<dummy4>",
+		},
+	}
+
+	if !reflect.DeepEqual(requirements, expectedRequirements) {
+		t.Errorf("Unexpected requirements: got %+v, expected %+v", requirements, expectedRequirements)
+	}
+}
+
+func TestSubmitDocuments(t *testing.T) {
+	// Create a mocked server
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check the request details
+		if r.Method != http.MethodPost {
+			t.Errorf("Expected POST request, got %s", r.Method)
+		}
+		if r.URL.Path != UploadDocsPath {
+			t.Errorf("Expected URL %s, got %s", UploadDocsPath, r.URL.Path)
+		}
+
+		// Read the request body
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("Failed to read request body: %v", err)
+		}
+
+		type docs struct {
+			Id      int    `json:"related_req_id"`
+			Name    string `json:"title"`
+			Content string `json:"content"`
+		}
+
+		// Unmarshal the request body
+		var requestBody struct {
+			Token     string `json:"token"`
+			PackID    int    `json:"pid"`
+			Documents []docs `json:"documents"`
+		}
+		err = json.Unmarshal(body, &requestBody)
+		if err != nil {
+			t.Errorf("Failed to unmarshal request body: %v", err)
+		}
+
+		// Check the request body fields
+		expectedToken := "<auth-token>"
+		if requestBody.Token != expectedToken {
+			t.Errorf("Unexpected request body field 'token': got %s, expected %s", requestBody.Token, expectedToken)
+		}
+
+		expectedPackID := 1
+		if requestBody.PackID != expectedPackID {
+			t.Errorf("Unexpected request body field 'pid': got %d, expected %d", requestBody.PackID, expectedPackID)
+		}
+
+		expectedDocs := []data.Document{
+			{
+				ID:       123,
+				Filename: "doc1.txt",
+				Content:  "Document 1 content",
+			},
+		}
+		if len(requestBody.Documents) != len(expectedDocs) {
+			t.Errorf("Unexpected number of documents: got %d, expected %d", len(requestBody.Documents), len(expectedDocs))
+		}
+		for i, doc := range requestBody.Documents {
+			if doc.Id != expectedDocs[i].ID {
+				t.Errorf("Unexpected document ID: got %d, expected %d", doc.Id, expectedDocs[i].ID)
+			}
+			if doc.Name != expectedDocs[i].Filename {
+				t.Errorf("Unexpected document name: got %s, expected %s", doc.Name, expectedDocs[i].Filename)
+			}
+			if doc.Content != expectedDocs[i].Content {
+				t.Errorf("Unexpected document content: got %s, expected %s", doc.Content, expectedDocs[i].Content)
+			}
+		}
+		// Prepare a sample response
+		response := struct {
+			TreatmentRequestID int `json:"tr_id"`
+		}{
+			TreatmentRequestID: 12345,
+		}
+
+		// Send the response
+		_ = json.NewEncoder(w).Encode(response)
+	}))
+	defer mockServer.Close()
+
+	// Create an instance of the REST class and set the domain to the mocked server URL
+	R := &REST{
+		Domain: mockServer.URL,
+		Token:  "<auth-token>",
+	}
+
+	// Prepare the test data
+	packID := 1
+	docs := []data.Document{
+		{
+			ID:       123,
+			Filename: "doc1.txt",
+			Content:  "Document 1 content",
+		},
+	}
+
+	// Call the SubmitDocuments method
+	err := R.SubmitDocuments(packID, docs)
+
+	// Check for errors
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
 	}
 }

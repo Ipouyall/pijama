@@ -5,21 +5,21 @@ import (
 )
 
 type Core interface {
-	Authenticate(username, password string) (bool, string)
+	Authenticate(username, password string) (error, string)
 
 	GetPackage() []data.Package
-	RequestPackage(packID int) data.Requirement
+	RequestPackage(packID int) []data.Requirement
 
-	SubmitDocument(docID int, name, content string) bool
+	SubmitDocuments(packID int, docs []data.Document) error
 
 	GetHotels() []data.HotelRoom
-	ReserveHotel(hotelID int) bool
+	ReserveHotel(hotelID int) error
 
-	RequestVisa() bool
-	SubmitVisa(visaID int) bool
+	RequestVisa() []data.Requirement
+	SubmitVisa(visaID int) error
 
 	GetBill() data.Bill
-	PayBill(billID int, code string) bool
+	PayBill(billID int, code string) error
 }
 
 // core need to also store data and data would store requirements
