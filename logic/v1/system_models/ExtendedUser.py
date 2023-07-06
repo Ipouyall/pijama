@@ -5,7 +5,7 @@ from .Geography import City
 class ExtendedUser(models.Model):
     related_user = models.OneToOneField(User,on_delete=models.CASCADE,related_name='extended_user_real_user')
     chat_id =models.IntegerField()
-    city = models.OneToOneField(City,null=True,blank=True,on_delete=models.CASCADE)
+    city = models.ForeignKey(City,null=True,blank=True,on_delete=models.CASCADE)
     token = models.CharField(max_length=32,null=True,blank=True)
     def __str__(self) -> str:
         return self.related_user.username

@@ -21,7 +21,7 @@ class Package(models.Model):
     description = models.CharField(max_length=200)
     estimated_cost =models.DecimalField(decimal_places=0,max_digits=12)
     requirements = models.ManyToManyField(Requirement,verbose_name='package_reqs')
-    city  =models.OneToOneField(City,on_delete=models.DO_NOTHING,null=True,blank=True)
+    city  =models.ForeignKey(City,on_delete=models.DO_NOTHING,null=True,blank=True)
     related_doctor = models.ForeignKey(Doctor,verbose_name='related_doctor',on_delete=models.DO_NOTHING,null=True,blank=True )
     package_class = models.ForeignKey(PackageClass,verbose_name='package_class',null=True,blank=True,on_delete=models.DO_NOTHING)
     related_hospital = models.ForeignKey(Hospital,verbose_name='related_hospital',on_delete=models.DO_NOTHING,null=True,blank=True )

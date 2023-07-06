@@ -9,11 +9,14 @@ from ..system_models.Document import VizaDocument
 import logging
 class QueryBuilder():
     @staticmethod
+    def get_user_id_by_payment_id(payment_id):
+        return PaymentRequest.objects.filter(pk =payment_id).first().related_treatment_request.related_patient.related_user
     def get_relative_supports(city_name):
-        return Support.objects.filter(related_user__city_id=city_name,occupied=True).values_list('id')
+        return Support.objects.filter(related_user__city_id=city_name,occupied=False).values_list('id',flat=True)
     def update_support_occupied(support_id):
         support = Support.objects.get(id = support_id)
         support.occupied=True
+        support.save()
         return True 
     def get_treatment_request(tr_id,user_id=None):
         if (user_id == None):
@@ -56,6 +59,9 @@ class QueryBuilder():
     def get_user_by_token(token):
         return ExtendedUser.objects.filter(token = token).first()
     
+    def get_sys_admin_by_token(token):
+        return SysAdmin.objects.filter(related_user__token = token).first()
+    
     #-----------------------------------------------------------#
     def get_user_by_id(uid):
         return ExtendedUser.objects.filter(related_user__id = uid).first()
@@ -71,6 +77,9 @@ class QueryBuilder():
     #-----------------------------------------------------------#
     def get_visa_raw(serial_no):
         return Viza.objects.filter(pk=serial_no).first()
+    def update_visa_raw_with_new_status(serial_no,new_status):
+        return Viza.objects.filter(pk=serial_no).update(status_id=new_status)
+
     #-----------------------------------------------------------#
     def insert_new_payment_request(value,tr_id):
         p = PaymentRequest(value=value,related_treatment_request_id=tr_id)
@@ -81,6 +90,8 @@ class QueryBuilder():
         return TreatmentRequest.objects.filter(related_patient__id=uid).all()
     def get_payment_request(paymentId):
         return PaymentRequest.objects.filter(pk=paymentId).first()
+    def update_payment_request_with_status(paymentId,new_status):
+        return PaymentRequest.objects.filter(pk=paymentId).update(status_id=new_status)
 
     def get_user_in_visa(uid):
         viza = Viza.objects.filter(related_user__id=uid).first()

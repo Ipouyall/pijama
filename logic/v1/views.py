@@ -8,12 +8,13 @@ from django.shortcuts import render
 from django.http import HttpResponse,JsonResponse
 from django.core import serializers
 from .database.query import QueryBuilder
-from .system_models.ExtendedUser import ExtendedUser
 from .system_models.Geography import *
 from .system_models.Payment import * 
 from .system_models.Medical import * 
 from .system_models.TreatmentRequest import * 
 from .system_models.Viza import * 
+from .system_models.ExtendedUser import * 
+
 import random
 # from django.contrib.users
 from django.contrib.auth import logout                           
@@ -27,18 +28,17 @@ from django.db.models import Model
 from v1.encoders import ExtendedEncoder, ModelToDict
 import random,string
 from datetime import datetime
-# import telegram
-# import requests
+import requests
 # from django.core.mail import send_mail
-# TELEGRAM_BOT_API_TOKEN = "6316780921:AAHvZw68iEUCOaTPmRunibA3GyH9--jlbdY"
-# logger = logging.getLogger(__name__)
-# class Notifier():
-#     @staticmethod
-#     def notify(chat_id,message):
-#        bot_token = '6316780921:AAHvZw68iEUCOaTPmRunibA3GyH9--jlbdY'
-#        url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
-#        params = {'chat_id': chat_id, 'text': message}
-#        return requests.post(url, params=params)
+TELEGRAM_BOT_API_TOKEN = "6316780921:AAHvZw68iEUCOaTPmRunibA3GyH9--jlbdY"
+logger = logging.getLogger(__name__)
+class Notifier():
+    @staticmethod
+    def notify(chat_id,message):
+       bot_token = '6316780921:AAHvZw68iEUCOaTPmRunibA3GyH9--jlbdY'
+       url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
+       params = {'chat_id': chat_id, 'text': message}
+       return requests.post(url, params=params)
 
 
 def gen_token(token_length=32):
@@ -134,13 +134,20 @@ class PaymentHandler():
 class SupportHandler():
     @staticmethod
     def assign_support(city_name):
+        logger.warn(city_name)
         potential_support_ids = QueryBuilder.get_relative_supports(city_name)
-        random_support_id = random.choices(potential_support_ids)
-        return random_support_id   
+        if (potential_support_ids.__len__() != 0):
+            random_support_id = random.choices(potential_support_ids)
+            return random_support_id[0]
+        else:
+            return False
+    
     def update_support_occupied(support_id):
         support_occupied_id = QueryBuilder.update_support_occupied(support_id)
         return support_occupied_id
 class Controller():
+    def get_user_id_by_payment_id(payment_id):
+        return QueryBuilder.get_user_id_by_payment_id()
     def change_visa_status(request):
         if (request.method == 'POST'):
             request_json = json.loads(request.body)
@@ -148,21 +155,21 @@ class Controller():
             tr_user = Controller.get_user_by_token(request)
             logging.warn(tr_user)
             if (tr_user != None and tr_user.related_user.username == "admin"):
-                user = QueryBuilder.get_user_by_id(request_json.get("uid"))
+                serial_no = request_json.get("serial_no") 
+                visa = QueryBuilder.get_visa_raw(serial_no)
+                user = visa.related_user.related_user
                 if (user == None):
                     response = JsonResponse({"message":"User does not exist"},safe=False)
                     response.status_code = 404 
                     return response
-                serial_no = request_json.get("serial_no") 
-                visa = QueryBuilder.get_visa_raw(serial_no)
 
                 if (visa != None):
                     logging.warn(visa.status.id)
-                    visa.status__id = request_json.get("visa_status")
+                    new_status = request_json.get("visa_status")
                     logging.warn(request_json.get("visa_status"))
                     logging.warn(visa.status.id)
-                    visa.save()
-                    # Notfier.notify(user.chat_id, "Your viza accepted.")
+                    QueryBuilder.update_visa_raw_with_new_status(serial_no,new_status)
+                    Notifier.notify(user.chat_id, "Your viza accepted.")
                     return JsonResponse({"message":"Visa status updated succefully"},safe=False)
                 else:
                     response = JsonResponse({"message":"Visa does not exist"},safe=False)
@@ -177,11 +184,9 @@ class Controller():
         if (request.method == 'POST'):
             request_json = json.loads(request.body)
             
-            tr_user = Controller.get_user_by_token(request)
-            logging.warn(tr_user)
-            if (tr_user != None and tr_user.related_user.username == 'admin'):
-
-                user = QueryBuilder.get_user_by_id(request_json.get("uid"))
+            tr_user = Controller.get_sys_admin_by_token(request)
+            if (tr_user != None):
+                user = QueryBuilder.get_user_id_by_payment_id(request_json.get("payment_id"))
                 if (user == None):
                     response = JsonResponse({"message":"User does not exist"},safe=False)
                     response.status_code = 404 
@@ -190,14 +195,20 @@ class Controller():
                 payment_id = request_json.get("payment_id") 
                 payment_status = request_json.get("payment_status")
                 payment_request = QueryBuilder.get_payment_request(payment_id)
-
+                treatment_request= payment_request.related_treatment_request
                 if (payment_request != None):
                     logging.warn(payment_request.status.id)
-                    payment_request.status__id = payment_status
                     logging.warn(request_json.get("payment_id"))
                     logging.warn(payment_request.status.id)
-                    payment_request.save()
-                    # Notfier.notify(user.chat_id, "Your viza accepted.")
+                    QueryBuilder.update_payment_request_with_status(payment_id,payment_status)
+                    
+                    Notifier.notify(user.chat_id, format("Your payment has been accepted by admin"))
+                    
+                    if (Controller.assign_support(treatment_request.id,user.id)):
+                        Notifier.notify(user.chat_id, format("Support has been assigned to your treatment request"))
+                    else :
+                        Notifier.notify(user.chat_id, format("Failed to assign support to your treatment request please check the panel"))
+                        
                     return JsonResponse({"message":"PaymentRequest status updated succefully"},safe=False)
                 else:
                     response = JsonResponse({"message":"PaymentRequest does not exist"},safe=False)
@@ -210,14 +221,17 @@ class Controller():
 
     @staticmethod
     # Change Treatment Request Status
-    def assign_support(tr_id,user_token):
-            tr_user = Controller.get_user_by_token(user_token)
+    def assign_support(tr_id,user_id):
+            tr_user = QueryBuilder.get_user_by_id(user_id)
             if (tr_user != None):
                 treatment_request = TreatmentRequestHandler.get_treatment_request(tr_id,tr_user.id)
                 if (treatment_request != None):
-                    assigned_support_id = SupportHandler.assign_support(tr_id)
-                    SupportHandler.update_support_occupied(assigned_support_id)
-                    return assigned_support_id
+                    assigned_support_id = SupportHandler.assign_support(treatment_request.related_package.city.id)
+                    if (assigned_support_id):
+                        SupportHandler.update_support_occupied(assigned_support_id)
+                        return assigned_support_id
+                    else:
+                        return False
                 else:
                     return False
             else:   
@@ -227,8 +241,6 @@ class Controller():
             request_json = json.loads(request.body)
             tr_user = Controller.get_user_by_token(request)
             if (tr_user != None):
-                # tr_id = request_json.get("tr_id")
-                # treatment_request = TreatmentRequestHandler.get_treatment_request(tr_id,tr_user.id)
                 treatment_request = QueryBuilder.get_user_in_tr_id(tr_user.related_user.id).first()
                 logging.warn(treatment_request)
                 if (treatment_request != None):
@@ -269,6 +281,14 @@ class Controller():
             return QueryBuilder.get_user_by_token(request_json["token"])
         else:
             return None
+    
+    def get_sys_admin_by_token(request):
+        request_json = json.loads(request.body)
+        if (request_json.get("token")):
+            return QueryBuilder.get_sys_admin_by_token(request_json["token"])
+        else:
+            return None
+   
     def handle_visa_request(request):
         if (request.method =='GET'):
             return VisaHandler.get_visa_requirements()
