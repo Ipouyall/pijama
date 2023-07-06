@@ -40,6 +40,9 @@ class QueryBuilder():
     #-----------------------------------------------------------#
     def get_hotels(city_id):
         return Hotel.objects.filter(city__id=city_id)
+    #-----------------------------------------------------------#
+    def get_city(city_name):
+        return City.objects.filter(city_name=city_name)
     def get_hotel(hotel_id):
         return Hotel.objects.filter(id=hotel_id).first()
     #-----------------------------------------------------------#
@@ -65,3 +68,6 @@ class QueryBuilder():
         p = PaymentRequest(value=value,related_treatment_request_id=tr_id)
         p.save()
         return p
+        #-----------------------------------------------------------#
+    def get_user_in_tr_id(uid):
+        return TreatmentRequest.objects.filter(related_patient__id=uid).all()

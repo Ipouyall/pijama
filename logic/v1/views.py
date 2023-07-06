@@ -1,5 +1,5 @@
-# TODO check city id stuff
-# TODO fix status codes
+# TODO check city id stuff  DONE
+# TODO fix status codes DONE
 # TODO Payment Request double endpoint that calls assigns support
 # TODO Notify different people
 # TODO Move queries of package and hotel to Query Builder
@@ -27,18 +27,18 @@ from django.db.models import Model
 from v1.encoders import ExtendedEncoder, ModelToDict
 import random,string
 from datetime import datetime
-import telegram
-import requests
-from django.core.mail import send_mail
-TELEGRAM_BOT_API_TOKEN = "6316780921:AAHvZw68iEUCOaTPmRunibA3GyH9--jlbdY"
-logger = logging.getLogger(__name__)
-class Notifier():
-    @staticmethod
-    def notify(chat_id,message):
-       bot_token = '6316780921:AAHvZw68iEUCOaTPmRunibA3GyH9--jlbdY'
-       url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
-       params = {'chat_id': chat_id, 'text': message}
-       return requests.post(url, params=params)
+# import telegram
+# import requests
+# from django.core.mail import send_mail
+# TELEGRAM_BOT_API_TOKEN = "6316780921:AAHvZw68iEUCOaTPmRunibA3GyH9--jlbdY"
+# logger = logging.getLogger(__name__)
+# class Notifier():
+#     @staticmethod
+#     def notify(chat_id,message):
+#        bot_token = '6316780921:AAHvZw68iEUCOaTPmRunibA3GyH9--jlbdY'
+#        url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
+#        params = {'chat_id': chat_id, 'text': message}
+#        return requests.post(url, params=params)
 
 
 def gen_token(token_length=32):
@@ -77,7 +77,13 @@ class AccomadationHandler():
             if (package != None):
                 related_package_city_id =package.city.id
                 filtered_hotels =list (QueryBuilder.get_hotels(related_package_city_id))
-                hotels_json = json.dumps(filtered_hotels,cls=ExtendedEncoder)
+
+                hotels_dict = ModelToDict(list(filtered_hotels))
+                for hotel_dict in hotels_dict:
+                    hotel_dict['city'] = hotel_dict['city']['city_name']
+                    hotel_dict['hotel_class'] = hotel_dict['hotel_class']['hotel_class']
+
+                hotels_json = json.dumps(hotels_dict,cls=ExtendedEncoder)
                 return JsonResponse(json.loads(hotels_json) ,safe=False)
             else:
                 response = JsonResponse({"message":"Package does not exist"},safe=False)
@@ -218,6 +224,9 @@ class Controller():
             response = JsonResponse({"message":"Method not allowed"},safe=False)
             response.status_code = 405 
             return response
+    def check1(request):
+        request_json = json.loads(request.body)
+
 
 
     def get_visa_status(request):
@@ -244,8 +253,10 @@ class Controller():
                 response.status_code==http_code
                 return response
             else:
-             return JsonResponse({"status":403,
-                                     "message":"Not Authorized"})   
+             response = JsonResponse({"status":403,
+                                     "message":"Not Authorized"}) 
+             response.status_code = 403
+             return response  
         else:
             response = JsonResponse({"message":"Method not allowed"},safe=False)
             response.status_code = 405 
@@ -253,21 +264,39 @@ class Controller():
     def upload_user_docs(request):
         if (request.method == 'POST'):
             request_json = json.loads(request.body)
-            pid    = request_json["pid"]
+            pid    = request_json.get("pid")
+            package = QueryBuilder.get_package(pid)
+            if (package == None):
+                response = JsonResponse({"status":403,
+                                     "message":"PAckage not found"})
+                response.status_code = 403
+                return response
             t_user=Controller.get_user_by_token(request)
             uid  = 0
             if (t_user != None):
+                trs = list(QueryBuilder.get_user_in_tr_id(t_user.related_user.pk))
+                for tr in trs:
+                    if(tr.status.id == 1):
+                        # TODO check status code
+                        response = JsonResponse({"status":403,
+                                     "message":"Yo have active treatmetn request: " + str(tr.id)})
+                        response.status_code = 403
+                        return response
                 uid = t_user.related_user.id
                 td_ids = DocumentHandler.submit_docs(request_json)
             else:
-                return JsonResponse({"status":403,
+                response = JsonResponse({"status":403,
                                      "message":"Not Authorized"})
+                response.status_code = 403
+                return response
                  
             tr_id = TreatmentRequestHandler.create_treatment_request(uid,pid,td_ids)
             return JsonResponse({"tr_id":tr_id,
                                  "status": 200})
         else:
-            return JsonResponse({"status":401})
+            response = JsonResponse({"message":"Method not allowed"},safe=False)
+            response.status_code = 401
+            return response
     
     def handle_hotel_request(request):
         if (request.method =='GET'):
@@ -344,14 +373,19 @@ class AuthenticationHandler():
             token  = request_json["token"]
             t_user = QueryBuilder.get_user_by_token(token)
             if (t_user == None):
-                return JsonResponse({"message":"Logout failed"
+                response = JsonResponse({"message":"Logout failed"
                                     ,"code ": 400})
+                response.status_code = 400
+                return response
             else:
                 t_user.token = None
                 t_user.save()
                 return JsonResponse({"message":"Logged out"
                                     ,"code ": 200})
-        return HttpResponse(request,"Error Pages/405.html",status = 405)
+        else:
+            response = JsonResponse({"message":"Method not allowed"},safe=False)
+            response.status_code = 405 
+            return response
 
     def login(request):
         if (request.method == 'POST'):
@@ -360,17 +394,24 @@ class AuthenticationHandler():
             password = request_json["password"]
             t_user = ExtendedUser.objects.filter(related_user__username = username).first()
             if (t_user == None):
-                return JsonResponse({"message":"User does not exist"
+                response = JsonResponse({"message":"User does not exist"
                                     ,"code ": 404})
+                response.status_code = 404
+                return response
             else:
                 if (not authenticate(username=username,password=password)):
-                    return JsonResponse({"message":"Wrong password"
+                    response = JsonResponse({"message":"Wrong password"
                                         ,"code ": 401})
+                    response.status_code = 401
+                    return response
                 else:
                     t_user.token = gen_token()
                     t_user.save()
                     return JsonResponse({"message":"Logged in ",
                                          "token" : t_user.token
                                         ,"code ": 200,})
-        return HttpResponse(request,"Error Pages/405.html",status = 405)
+        else:
+            response = JsonResponse({"message":"Method not allowed"},safe=False)
+            response.status_code = 405 
+            return response
 
