@@ -18,7 +18,8 @@ const (
 	UploadDocsPath  = "/api/v1/upload_user_docs"
 	HotelsPath      = "/api/v1/hotels"
 	VisaRequestPath = "/api/v1/handle_visa_request"
-	VisaStatusPath  = ""
+	VisaStatusPath  = "/api/v1/visa_status"
+	BillingPath     = "/api/v1/handle_payment_bill_request"
 	LogoutPath      = "/api/v1/logout"
 )
 
@@ -31,6 +32,7 @@ type REST struct {
 	Token              string
 	TreatmentPackage   data.Package
 	TreatmentPackageID int
+	VisaSerial         string
 }
 
 func (R *REST) Authenticate(username, password string) (err error, prompt string) {
@@ -164,12 +166,13 @@ func (R *REST) RequestPackage(pack data.Package) (requirements []data.Requiremen
 	return
 }
 
-func (R *REST) SubmitDocuments(packID int, docs []data.Document, dKind string) (err error) {
+func (R *REST) SubmitDocuments(packID int, docs []data.Document, dKind string) (err error, bill data.Bill) {
 	// Prepare the request body
 	requestBody := map[string]interface{}{
 		"token":     R.Token,
 		"pid":       packID,
 		"documents": docs,
+		"tr_id":     R.TreatmentPackageID,
 	}
 	requestBodyBytes, _ := json.Marshal(requestBody)
 
@@ -192,20 +195,32 @@ func (R *REST) SubmitDocuments(packID int, docs []data.Document, dKind string) (
 	// Check the response status code
 	if resp.StatusCode != http.StatusOK {
 		// Request failed
-		return fmt.Errorf("request failed with status code: %d", resp.StatusCode)
+		return fmt.Errorf("request failed with status code: %d", resp.StatusCode), bill
 	}
 
 	// Request succeeded
 	var response struct {
-		TreatmentRequestID int `json:"tr_id"`
+		TreatmentRequestID int    `json:"tr_id"`
+		VisaSerial         string `json:"serial_no"`
+		PaymentID          int    `json:"payment_request_id"`
+		Cost               int    `json:"total_cost"`
 	}
 	// Parse the response body
 	err = json.NewDecoder(resp.Body).Decode(&response)
 	if err != nil {
 		return
 	}
-	R.TreatmentPackageID = response.TreatmentRequestID
-
+	if dKind == "Treat" {
+		R.TreatmentPackageID = response.TreatmentRequestID
+	}
+	if dKind == "Visa" {
+		R.VisaSerial = response.VisaSerial
+		bill = data.Bill{
+			Title:     "Visa",
+			Cost:      response.Cost,
+			PaymentID: response.PaymentID,
+		}
+	}
 	return
 }
 
@@ -215,6 +230,7 @@ func (R *REST) GetHotels() (rooms []data.HotelRoom) {
 		"package_id": R.TreatmentPackage.ID,
 		"token":      R.Token,
 		"city":       R.TreatmentPackage.City,
+		"tr_id":      R.TreatmentPackageID,
 	}
 	requestBodyBytes, _ := json.Marshal(requestBody)
 
@@ -270,6 +286,7 @@ func (R *REST) RequestVisa() (requirements []data.Requirement) {
 	// Prepare the request body
 	requestBody := map[string]interface{}{
 		"token": R.Token,
+		"tr_id": R.TreatmentPackageID,
 	}
 	requestBodyBytes, _ := json.Marshal(requestBody)
 
@@ -307,7 +324,9 @@ func (R *REST) RequestVisa() (requirements []data.Requirement) {
 
 func (R *REST) VisaStatus() (vss []data.VisaStatus) {
 	requestBody := map[string]interface{}{
-		"token": R.Token,
+		"token":     R.Token,
+		"serial_no": R.VisaSerial,
+		"tr_id":     R.TreatmentPackageID,
 	}
 	requestBodyBytes, _ := json.Marshal(requestBody)
 
@@ -336,14 +355,39 @@ func (R *REST) VisaStatus() (vss []data.VisaStatus) {
 	return
 }
 
-func (R *REST) GetBill() data.Bill {
-	//TODO implement me
-	panic("implement me")
+func (R *REST) GetBill() (bill data.Bill) {
+	requestBody := map[string]interface{}{
+		"token":     R.Token,
+		"serial_no": R.VisaSerial,
+		"tr_id":     R.TreatmentPackageID,
+	}
+	requestBodyBytes, _ := json.Marshal(requestBody)
+
+	url := R.Domain + BillingPath
+	req, err := http.NewRequest("GET", url, bytes.NewBuffer(requestBodyBytes))
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return
+	}
+
+	_ = json.NewDecoder(resp.Body).Decode(&bill)
+	bill.Title = "Treat-" + R.TreatmentPackage.Name
+	return
 }
 
 func (R *REST) PayBill(billID int, code string) error {
-	//TODO implement me
-	panic("implement me")
+	return nil
 }
 
 func (R *REST) Logout() (err error) {
@@ -353,7 +397,7 @@ func (R *REST) Logout() (err error) {
 	requestBodyBytes, _ := json.Marshal(requestBody)
 
 	url := R.Domain + LogoutPath
-	req, err := http.NewRequest("GET", url, bytes.NewBuffer(requestBodyBytes))
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(requestBodyBytes))
 	if err != nil {
 		log.Fatal(err)
 	}

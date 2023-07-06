@@ -10,7 +10,7 @@ type Core interface {
 	GetPackage() []data.Package
 	RequestPackage(pack data.Package) []data.Requirement
 
-	SubmitDocuments(packID int, docs []data.Document, dKind string) error
+	SubmitDocuments(packID int, docs []data.Document, dKind string) (error, data.Bill)
 
 	GetHotels() []data.HotelRoom
 	ReserveHotel(hotelID int) error

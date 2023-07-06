@@ -236,3 +236,59 @@ func (m VisaStatusModel) View() string {
 	}
 	return view
 }
+
+type BillMenuModel struct {
+	Bills    []data.Bill
+	Selected int
+}
+
+func NewBillMenuModel(bills []data.Bill) *BillMenuModel {
+	return &BillMenuModel{
+		Bills:    bills,
+		Selected: 0,
+	}
+}
+
+func (m BillMenuModel) Init() tea.Cmd {
+	return nil
+}
+
+func (m BillMenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "q", "esc", "ctrl+c":
+			return m, tea.Quit
+		case "up":
+			m.Selected--
+			if m.Selected < 0 {
+				m.Selected = len(m.Bills) - 1
+			}
+		case "down":
+			m.Selected++
+			if m.Selected >= len(m.Bills) {
+				m.Selected = 0
+			}
+		case "enter":
+			return m, tea.Quit
+		}
+	}
+
+	return m, nil
+}
+
+func (m BillMenuModel) View() string {
+	view := ""
+	for i, bill := range m.Bills {
+		if i == m.Selected {
+			// Bold style for the selected bill
+			view += lipgloss.NewStyle().Bold(true).Render("[x] "+bill.Title) + "\n"
+		} else {
+			view += "[ ] " + bill.Title + "\n"
+		}
+		view += "\tCost: $" + strconv.Itoa(bill.Cost) + "\n"
+		view += "\tPayment ID: " + strconv.Itoa(bill.PaymentID) + "\n\n"
+	}
+
+	return view
+}

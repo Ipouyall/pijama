@@ -314,7 +314,7 @@ func TestSubmitDocuments(t *testing.T) {
 	}
 
 	// Call the SubmitDocuments method
-	err := R.SubmitDocuments(packID, docs, "Treat")
+	err, _ := R.SubmitDocuments(packID, docs, "Treat")
 
 	// Check for errors
 	if err != nil {

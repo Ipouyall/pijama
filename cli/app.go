@@ -4,10 +4,13 @@ import (
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
 	"log"
+	"os"
+	"os/exec"
 	"saaj/api"
 	"saaj/api/data"
 	input2 "saaj/ui/input"
 	"saaj/ui/menu"
+	"strconv"
 	"time"
 )
 
@@ -16,12 +19,14 @@ type App struct {
 	packageID    int
 	requirements []data.Requirement
 	visaProc     bool
+	Bills        map[string]data.Bill
 }
 
 func NewHttpApp() *App {
 	return &App{
 		core:     api.NewREST(api.Domain),
 		visaProc: false,
+		Bills:    make(map[string]data.Bill),
 	}
 }
 
@@ -122,9 +127,12 @@ func (a *App) uploadDocuments() {
 	kind := "Treat"
 	if a.visaProc {
 		kind = "Visa"
-		a.visaProc = false
 	}
-	_ = a.core.SubmitDocuments(a.packageID, docs, kind) //TODO: handle this error
+	_, bill := a.core.SubmitDocuments(a.packageID, docs, kind) //TODO: handle this error
+	if a.visaProc {
+		a.visaProc = false
+		a.Bills["visa_"+strconv.Itoa(bill.PaymentID)] = bill
+	}
 }
 
 func (a *App) reserveHotel() {
@@ -162,6 +170,50 @@ func (a *App) visaStatus() {
 	}
 }
 
+func (a *App) billing() {
+	bill := a.core.GetBill()
+	//bill := data.Bill{
+	//	PaymentID: 1,
+	//	Title:     "Visa",
+	//	Cost:      100,
+	//}
+
+	a.Bills["treat_"+strconv.Itoa(bill.PaymentID)] = bill
+	bills := make([]data.Bill, 0)
+	for _, v := range a.Bills {
+		bills = append(bills, v)
+	}
+
+	if len(bills) == 0 {
+		fmt.Println("You don't have any bills!")
+		return
+	}
+
+	board := menu.NewBillMenuModel(bills)
+	p := tea.NewProgram(board)
+	m, err := p.Run()
+	if err != nil {
+		log.Fatal(err)
+	}
+	billed := bills[m.(menu.BillMenuModel).Selected]
+	if billed.Title == "Visa" {
+		key := "visa_" + strconv.Itoa(billed.PaymentID)
+		delete(a.Bills, key)
+	} else if billed.Title[:5] == "Treat" {
+		key := "treat_" + strconv.Itoa(billed.PaymentID)
+		delete(a.Bills, key)
+	}
+
+	//q := input2.NewShortQuestion(fmt.Sprintf("Enter your card number: (cost: %d)", billed.Cost), "credit-card number")
+	//form := input2.NewSerialQuestions([]input2.Question{q})
+	//p = tea.NewProgram(*form)
+	//if _, err := p.Run(); err != nil {
+	//	log.Fatal(err)
+	//}
+	fmt.Print("\033[2J")
+	fmt.Println("Your payment is done successfully!")
+}
+
 func (a *App) logout() {
 	err := a.core.Logout()
 	if err != nil {
@@ -172,8 +224,6 @@ func (a *App) logout() {
 }
 
 func (a *App) step() bool {
-	a.login()
-
 	initialModel := menu.Model{}
 	initialModel.InitBaseMenu()
 
@@ -198,7 +248,7 @@ func (a *App) step() bool {
 	case "Visa Status":
 		a.visaStatus()
 	case "Pay bill":
-		panic("Implement me!")
+		a.billing()
 	case "Logout":
 		a.logout()
 		return false
@@ -207,11 +257,16 @@ func (a *App) step() bool {
 }
 
 func (a *App) Run() {
+	a.login()
+
 	for {
 		fmt.Print("\033[2J")
+		cmd := exec.Command("clear") //Linux example, its tested
+		cmd.Stdout = os.Stdout
+		cmd.Run()
 		if a.step() == false {
 			break
 		}
-		time.Sleep(1 * time.Second)
+		time.Sleep(1)
 	}
 }
