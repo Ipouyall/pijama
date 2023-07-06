@@ -1,8 +1,9 @@
-# TODO fix status codes
-# TODO Move queries of package and hotel to Query Builder
-# TODO  Payment Request double endpoint that calls assigns support
-# TODO Notify different people
 # TODO check city id stuff
+# TODO fix status codes
+# TODO Payment Request double endpoint that calls assigns support
+# TODO Notify different people
+# TODO Move queries of package and hotel to Query Builder
+
 from django.shortcuts import render
 from django.http import HttpResponse,JsonResponse
 from django.core import serializers
