@@ -57,6 +57,10 @@ class QueryBuilder():
         return ExtendedUser.objects.filter(token = token).first()
     
     #-----------------------------------------------------------#
+    def get_user_by_id(uid):
+        return ExtendedUser.objects.filter(related_user__id = uid).first()
+    
+    #-----------------------------------------------------------#
     def get_sys_admins_chat_id():
         return SysAdmin.objects.all().values_list('related_user__chat_id').all()
     #-----------------------------------------------------------#

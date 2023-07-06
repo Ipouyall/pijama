@@ -147,8 +147,12 @@ class Controller():
             
             tr_user = Controller.get_user_by_token(request)
             logging.warn(tr_user)
-            if (tr_user != None and tr_user.related_user.username == 'admin'):
-
+            if (tr_user != None and tr_user.related_user.username == "admin"):
+                user = QueryBuilder.get_user_by_id(request_json.get("uid"))
+                if (user == None):
+                    response = JsonResponse({"message":"User does not exist"},safe=False)
+                    response.status_code = 404 
+                    return response
                 serial_no = request_json.get("serial_no") 
                 visa = QueryBuilder.get_visa_raw(serial_no)
 
@@ -158,9 +162,7 @@ class Controller():
                     logging.warn(request_json.get("visa_status"))
                     logging.warn(visa.status.id)
                     visa.save()
-                    logging.warning("dsfsdfsdfsf")
-                    response = JsonResponse({"message":"Visa does not exist"},safe=False)
-                    response.status_code = 404 
+                    # Notfier.notify(user.chat_id, "Your viza accepted.")
                     return JsonResponse({"message":"Visa status updated succefully"},safe=False)
                 else:
                     response = JsonResponse({"message":"Visa does not exist"},safe=False)
@@ -179,6 +181,12 @@ class Controller():
             logging.warn(tr_user)
             if (tr_user != None and tr_user.related_user.username == 'admin'):
 
+                user = QueryBuilder.get_user_by_id(request_json.get("uid"))
+                if (user == None):
+                    response = JsonResponse({"message":"User does not exist"},safe=False)
+                    response.status_code = 404 
+                    return response
+
                 payment_id = request_json.get("payment_id") 
                 payment_status = request_json.get("payment_status")
                 payment_request = QueryBuilder.get_payment_request(payment_id)
@@ -189,9 +197,7 @@ class Controller():
                     logging.warn(request_json.get("payment_id"))
                     logging.warn(payment_request.status.id)
                     payment_request.save()
-                    logging.warning("dsfsdfsdfsf")
-                    response = JsonResponse({"message":"PaymentRequest does not exist"},safe=False)
-                    response.status_code = 200
+                    # Notfier.notify(user.chat_id, "Your viza accepted.")
                     return JsonResponse({"message":"PaymentRequest status updated succefully"},safe=False)
                 else:
                     response = JsonResponse({"message":"PaymentRequest does not exist"},safe=False)
@@ -201,13 +207,7 @@ class Controller():
                 response = JsonResponse({"message":"You don't have access."},safe=False)
                 response.status_code = 403 
                 return response
-            # tr_user = Controller.get_user_by_token(request)
-            # if (tr_user != None):
-            #     tr_id = request_json.get("tr_id) 
-            #     else:
-            #      response =JsonResponse({"message":"Not Authorized to access Treatment Request or Treatment Request not found"}) 
-            #      response.status_code = 403
-            #      return response
+
     @staticmethod
     # Change Treatment Request Status
     def assign_support(tr_id,user_token):
