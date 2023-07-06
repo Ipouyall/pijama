@@ -59,6 +59,9 @@ class QueryBuilder():
     def get_user_by_token(token):
         return ExtendedUser.objects.filter(token = token).first()
     
+    def get_patient_by_token(token):
+        return Patient.objects.filter(related_user__token = token).first()
+    
     def get_sys_admin_by_token(token):
         return SysAdmin.objects.filter(related_user__token = token).first()
     
@@ -87,7 +90,7 @@ class QueryBuilder():
         return p
         #-----------------------------------------------------------#
     def get_user_in_tr_id(uid):
-        return TreatmentRequest.objects.filter(related_patient__id=uid).all()
+        return TreatmentRequest.objects.filter(related_patient__related_user__id=uid).all()
     def get_payment_request(paymentId):
         return PaymentRequest.objects.filter(pk=paymentId).first()
     def update_payment_request_with_status(paymentId,new_status):

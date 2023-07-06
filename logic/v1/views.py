@@ -248,12 +248,12 @@ class Controller():
                     visa = VisaHandler.check_viza(serial_no,tr_user.token)
                     if (visa != None):
                         if (visa.status.id == Active_Visa):
-                            value = treatment_request.related_package.estimated_cost
-                            package_payment = PaymentHandler.create_invoice(value,treatment_request.id)
+                            total_cost  = treatment_request.related_package.estimated_cost + treatment_request.reserved_hotel.cost 
+                            package_payment = PaymentHandler.create_invoice(total_cost,treatment_request.id)
                             return JsonResponse({"status":200,
                                                  "message":"Package payment request created",
                                                  "payment_request_id": package_payment.id,
-                                                 "total_cost" : int(package_payment.value) })
+                                                 "total_cost" : total_cost })
                         else:
                             response =JsonResponse({"message":"Visa status is " + visa.status.status + " Wait for viza confirmation or try again for viza"}) 
                             response.status_code = 403
@@ -281,7 +281,13 @@ class Controller():
             return QueryBuilder.get_user_by_token(request_json["token"])
         else:
             return None
-    
+    def get_patient_by_token(request):
+        request_json = json.loads(request.body)
+        if (request_json.get("token")):
+            return QueryBuilder.get_patient_by_token(request_json["token"])
+        else:
+            return None
+   
     def get_sys_admin_by_token(request):
         request_json = json.loads(request.body)
         if (request_json.get("token")):
@@ -294,12 +300,12 @@ class Controller():
             return VisaHandler.get_visa_requirements()
         if (request.method == 'POST'):
             request_json = json.loads(request.body)
-            tr_user = Controller.get_user_by_token(request)
+            tr_user = Controller.get_patient_by_token(request)
             if (tr_user != None):
                 # Check tr id exists 
                 tr_id = request_json.get("tr_id")
-                treament_request = TreatmentRequestHandler.get_treatment_request(tr_id,tr_user.id)
-                if (treament_request != None):
+                treatment_request = TreatmentRequestHandler.get_treatment_request(tr_id,tr_user.id)
+                if (treatment_request != None):
                     visa = VisaHandler.create_empty_visa(tr_user.id)
                     VisaHandler.add_visa_docs(request_json,visa.serial_no)
                     payment_request = PaymentHandler.create_invoice(visa.request_cost,tr_id)
@@ -373,11 +379,13 @@ class Controller():
             uid  = 0
             if (t_user != None):
                 trs = list(QueryBuilder.get_user_in_tr_id(t_user.related_user.pk))
+                logger.warn(trs)
                 for tr in trs:
+                    logger.warn(tr.status.id)
                     if(tr.status.id == 1):
                         # TODO check status code
                         response = JsonResponse({"status":403,
-                                     "message":"Yo have active treatmetn request: " + str(tr.id)})
+                                     "message":"You have already have an active treatment request: " + str(tr.id)})
                         response.status_code = 403
                         return response
                 uid = t_user.related_user.id
@@ -388,6 +396,7 @@ class Controller():
                 response.status_code = 403
                 return response
                  
+            logger.warn([uid,pid,td_ids])
             tr_id = TreatmentRequestHandler.create_treatment_request(uid,pid,td_ids)
             return JsonResponse({"tr_id":tr_id,
                                  "status": 200})
@@ -400,11 +409,11 @@ class Controller():
         if (request.method =='GET'):
             return AccomadationHandler.get_hotels(request)
         elif (request.method == 'POST'):
-            t_user=Controller.get_user_by_token(request)
-            if (t_user !=None):
+            t_patient=Controller.get_patient_by_token(request)
+            if (t_patient !=None):
                     request_json =json.loads(request.body)
                     treatment_request_id = request_json.get("tr_id")
-                    treatment_request = TreatmentRequestHandler.get_treatment_request(treatment_request_id,t_user.id)
+                    treatment_request = TreatmentRequestHandler.get_treatment_request(treatment_request_id,t_patient.id)
                     if (treatment_request == None):
                         response =JsonResponse({"message":"Treatment request was not found"})
                         response.status_code = 403
@@ -473,11 +482,13 @@ class PackageHandler():
         packs = Package.objects.filter(pk=id).first()
         if (packs != None):
             requirements=packs.requirements.all()
+            serialized_requirments = json.dumps(list(requirements),cls=ExtendedEncoder)
+            return JsonResponse(json.loads(serialized_requirments) ,safe=False)
         else:
-            requirements=[]
-        serialized_requirments = json.dumps(list(requirements),cls=ExtendedEncoder)
-        return JsonResponse(json.loads(serialized_requirments) ,safe=False)
-
+            response = JsonResponse({"message":"Package does not exist"
+                                    , "code":404})
+            response.status_code=404
+            return response
 class AuthenticationHandler():
     @staticmethod
     def logout(request):
