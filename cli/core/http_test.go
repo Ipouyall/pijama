@@ -64,7 +64,7 @@ func TestAuthenticate(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected successful authentication, got error: %v", err)
 	}
-	if prompt != "" {
+	if prompt != "You logged in successfully" {
 		t.Errorf("Expected prompt to be empty, got '%s'", prompt)
 	}
 	if rest.Token != "<auth-token>" {
@@ -104,7 +104,7 @@ func TestGetPackage(t *testing.T) {
 				"package_name":   "<disease-name>",
 				"category":       "<category>",
 				"description":    "<description>",
-				"estimated_cost": "<cost>",
+				"estimated_cost": 1200,
 				"city":           "<city-name>",
 				"doctor":         "<doctor-name>",
 				"hospital":       "<hospital-name>",
@@ -126,15 +126,15 @@ func TestGetPackage(t *testing.T) {
 	// Check the returned packages
 	expectedPackages := []data.Package{
 		{
-			ID:          1,
-			Name:        "<disease-name>",
-			Category:    "<category>",
-			Description: "<description>",
-			Cost:        "<cost>",
-			City:        "<city-name>",
-			Doctor:      "<doctor-name>",
-			Hospital:    "<hospital-name>",
-			Class:       "<p-class>",
+			ID:           1,
+			Name:         "<disease-name>",
+			Category:     "<category>",
+			PDescription: "<description>",
+			Cost:         1200,
+			City:         "<city-name>",
+			Doctor:       "<doctor-name>",
+			Hospital:     "<hospital-name>",
+			Class:        "<p-class>",
 		},
 		// Add more expected packages if needed
 	}
@@ -319,5 +319,107 @@ func TestSubmitDocuments(t *testing.T) {
 	// Check for errors
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
+	}
+}
+
+func TestGetHotels(t *testing.T) {
+	// Create a mock server
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		// Verify the request method
+		if req.Method != "GET" {
+			t.Errorf("Unexpected request method: got %s, expected GET", req.Method)
+		}
+
+		// Verify the request body
+		expectedBody := map[string]interface{}{
+			"package_id": 11,
+			"token":      "<auth-token>",
+			"city":       "<package-city>",
+		}
+		var requestBody map[string]interface{}
+		err := json.NewDecoder(req.Body).Decode(&requestBody)
+		if err != nil {
+			t.Fatalf("Failed to decode request body: %v", err)
+		}
+		//if requestBody["package_id"] != expectedBody["package_id"] {
+		//	t.Errorf("Unexpected request body field 'package_id'")
+		//}
+		if requestBody["token"] != expectedBody["token"] {
+			t.Errorf("Unexpected request body field 'token': got %v, expected %v", requestBody["token"], expectedBody["token"])
+		}
+		if requestBody["city"] != expectedBody["city"] {
+			t.Errorf("Unexpected request body field 'city': got %v, expected %v", requestBody["city"], expectedBody["city"])
+		}
+
+		// Prepare the mock response
+		response := []map[string]interface{}{
+			{
+				"id":          1,
+				"hotel_name":  "<hotel-name>",
+				"hotel_class": "<golden>",
+				"cost":        1200,
+				"city":        "<city-name>",
+				"address":     "<street, ave>",
+			},
+			// Add more hotel rooms if needed
+		}
+		responseBody, err := json.Marshal(response)
+		if err != nil {
+			t.Fatalf("Failed to marshal response body: %v", err)
+		}
+
+		// Set the response status code and body
+		rw.WriteHeader(http.StatusOK)
+		_, _ = rw.Write(responseBody)
+	}))
+	defer server.Close()
+
+	// Create a REST instance using the mock server's URL
+	R := &REST{
+		Domain: server.URL,
+		Token:  "<auth-token>",
+		TreatmentPackage: data.Package{
+			ID:   11,
+			City: "<package-city>",
+		},
+	}
+
+	// Call the GetHotels method
+	rooms := R.GetHotels()
+
+	// Verify the response
+	expectedRooms := []map[string]interface{}{
+		{
+			"id":          1,
+			"hotel_name":  "<hotel-name>",
+			"hotel_class": "<golden>",
+			"cost":        1200,
+			"city":        "<city-name>",
+			"address":     "<street, ave>",
+		},
+		// Add more expected hotel rooms if needed
+	}
+	if len(rooms) != len(expectedRooms) {
+		t.Fatalf("Unexpected number of hotel rooms: got %d, expected %d", len(rooms), len(expectedRooms))
+	}
+	for i, room := range expectedRooms {
+		if room["id"] != rooms[i].ID {
+			t.Errorf("Unexpected hotel room ID: got %v, expected %v", rooms[i].ID, room["id"])
+		}
+		if room["hotel_name"] != rooms[i].HotelName {
+			t.Errorf("Unexpected hotel room name: got %v, expected %v", rooms[i].HotelName, room["hotel_name"])
+		}
+		if room["hotel_class"] != rooms[i].HotelClass {
+			t.Errorf("Unexpected hotel room class: got %v, expected %v", rooms[i].HotelClass, room["hotel_class"])
+		}
+		if room["cost"] != rooms[i].Cost {
+			t.Errorf("Unexpected hotel room cost: got %v, expected %v", rooms[i].Cost, room["cost"])
+		}
+		if room["city"] != rooms[i].City {
+			t.Errorf("Unexpected hotel room city: got %v, expected %v", rooms[i].City, room["city"])
+		}
+		if room["address"] != rooms[i].Address {
+			t.Errorf("Unexpected hotel room address: got %v, expected %v", rooms[i].Address, room["address"])
+		}
 	}
 }

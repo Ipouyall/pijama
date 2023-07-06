@@ -1,4 +1,4 @@
-package menu
+package styled
 
 import (
 	"github.com/charmbracelet/bubbles/key"
@@ -45,12 +45,10 @@ func newColumn(current, last index) column {
 	}
 }
 
-// Init does initial setup for the column.
 func (c column) Init() tea.Cmd {
 	return nil
 }
 
-// Update handles all the I/O for columns.
 func (c column) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
@@ -75,7 +73,9 @@ func (c column) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Delete):
 			return c, c.DeleteCurrent()
 		case key.Matches(msg, keys.Enter):
-			return c, c.MoveToNext()
+			// get the item selected
+
+			return c, nil
 		}
 	}
 	c.list, cmd = c.list.Update(msg)

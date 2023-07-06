@@ -15,6 +15,7 @@ const (
 	PackagesPath   = "/api/v1/packages"
 	PackageReqPath = "/api/v1/package_requirements"
 	UploadDocsPath = "/api/v1/upload_user_docs"
+	HotelsPath     = "/api/v1/hotels"
 )
 
 func NewREST(domain string) *REST {
@@ -40,6 +41,7 @@ func (R *REST) Authenticate(username, password string) (err error, prompt string
 		"password": password,
 	}
 	requestBodyBytes, _ := json.Marshal(requestBody)
+	prompt = "You logged in successfully"
 
 	// Create the HTTP request
 	url := R.Domain + LoginPath
@@ -196,14 +198,61 @@ func (R *REST) SubmitDocuments(packID int, docs []data.Document) (err error) {
 	return
 }
 
-func (R *REST) GetHotels() []data.HotelRoom {
-	//TODO implement me
-	panic("implement me")
+func (R *REST) GetHotels() (rooms []data.HotelRoom) {
+	// Prepare the request body
+	requestBody := map[string]interface{}{
+		"package_id": R.TreatmentPackage.ID,
+		"token":      R.Token,
+		"city":       R.TreatmentPackage.City,
+	}
+	requestBodyBytes, _ := json.Marshal(requestBody)
+
+	// Create the HTTP request
+	url := R.Domain + HotelsPath
+	req, _ := http.NewRequest("GET", url, bytes.NewBuffer(requestBodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+
+	// Send the request and handle the response
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	// Check the response status code
+	if resp.StatusCode != http.StatusOK {
+		return
+	}
+
+	// Parse the response body
+	_ = json.NewDecoder(resp.Body).Decode(&rooms)
+	return
 }
 
 func (R *REST) ReserveHotel(hotelID int) error {
-	//TODO implement me
-	panic("implement me")
+	requestBody := map[string]interface{}{
+		"package_id": R.TreatmentPackage.ID,
+		"tr_id":      R.TreatmentPackageID,
+		"hotel_id":   hotelID,
+		"token":      R.Token,
+	}
+	requestBodyBytes, _ := json.Marshal(requestBody)
+	url := R.Domain + HotelsPath
+	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(requestBodyBytes))
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("request failed with status code: %d", resp.StatusCode)
+	}
+	return nil
 }
 
 func (R *REST) RequestVisa() []data.Requirement {

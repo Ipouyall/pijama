@@ -38,7 +38,7 @@ func (m SerialQuestion) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.index == len(m.questions)-1 {
 				m.done = true
 			}
-			current.answer = current.input.Value()
+			current.Answer = current.input.Value()
 			m.Next()
 			return m, current.input.Blur
 		}
@@ -52,7 +52,7 @@ func (m SerialQuestion) View() string {
 	if m.done {
 		var output string
 		//for _, q := range m.questions {
-		//	output += fmt.Sprintf("%s: %s\n", q.question, q.answer)
+		//	output += fmt.Sprintf("%s: %s\n", q.question, q.Answer)
 		//}
 		return output
 	}

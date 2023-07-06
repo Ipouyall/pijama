@@ -1,88 +1,53 @@
 package menu
 
 import (
-	"github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/bubbles/key"
+	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/fatih/color"
 )
 
-type Board struct {
-	help       help.Model
-	loaded     bool
-	focused    index
-	cols       []column
-	quitting   bool
-	last_index index
+type Model struct {
+	Items    []Item
+	Selected int
 }
 
-func NewBoard() *Board {
-	help := help.New()
-	help.ShowAll = true
-	return &Board{help: help, focused: first}
-}
-
-func (m *Board) Init() tea.Cmd {
+func (m Model) Init() tea.Cmd {
 	return nil
 }
 
-func (m *Board) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		var cmd tea.Cmd
-		var cmds []tea.Cmd
-		m.help.Width = msg.Width - margin
-		for i := 0; i < len(m.cols); i++ {
-			var res tea.Model
-			res, cmd = m.cols[i].Update(msg)
-			m.cols[i] = res.(column)
-			cmds = append(cmds, cmd)
-		}
-		m.loaded = true
-		return m, tea.Batch(cmds...)
-	case Form:
-		return m, m.cols[m.focused].Set(msg.index, msg.CreateTask())
-	case moveMsg:
-		return m, m.cols[m.focused.getNext(m.last_index)].Set(APPEND, msg.Item)
 	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, keys.Quit):
-			m.quitting = true
+		switch msg.String() {
+		case "ctrl+c", "esc":
 			return m, tea.Quit
-		case key.Matches(msg, keys.Left):
-			m.cols[m.focused].Blur()
-			m.focused = m.focused.getPrev(m.last_index)
-			m.cols[m.focused].Focus()
-		case key.Matches(msg, keys.Right):
-			m.cols[m.focused].Blur()
-			m.focused = m.focused.getNext(m.last_index)
-			m.cols[m.focused].Focus()
+		case "up":
+			m.Selected--
+			if m.Selected < 0 {
+				m.Selected = len(m.Items) - 1
+			}
+		case "down":
+			m.Selected++
+			if m.Selected >= len(m.Items) {
+				m.Selected = 0
+			}
+		case "enter":
+			return m, tea.Quit
 		}
 	}
-	res, cmd := m.cols[m.focused].Update(msg)
-	if _, ok := res.(column); ok {
-		m.cols[m.focused] = res.(column)
-	} else {
-		return res, cmd
-	}
-	return m, cmd
+	return m, nil
 }
 
-// Changing to pointer receiver to get back to this model after adding a new task via the form... Otherwise I would need to pass this model along to the form and it becomes highly coupled to the other models.
-func (m *Board) View() string {
-	if m.quitting {
-		return ""
+func (m Model) View() string {
+	view := ""
+	for i, item := range m.Items {
+		desc := color.HiBlackString(item.Description)
+		if i == m.Selected {
+			selected := color.GreenString("[x]")
+			view += fmt.Sprintf("%s %s %s\n", selected, item.Name, desc)
+		} else {
+			view += fmt.Sprintf("[ ] %s %s\n", item.Name, desc)
+		}
 	}
-	if !m.loaded {
-		return "loading..."
-	}
-	var views []string
-	for idx := range m.cols {
-		views = append(views, m.cols[idx].View())
-	}
-	board := lipgloss.JoinHorizontal(
-		lipgloss.Left,
-		views...,
-	)
-	return lipgloss.JoinVertical(lipgloss.Left, board, m.help.View(keys))
+	return view
 }

@@ -2,7 +2,7 @@ package input
 
 type Question struct {
 	question string
-	answer   string
+	Answer   string
 	input    Input
 }
 

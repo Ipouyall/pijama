@@ -1,32 +1,15 @@
 package menu
 
-import "github.com/charmbracelet/bubbles/list"
-
-func (b *Board) InitBaseMenu() {
-	b.last_index = third
-	b.cols = []column{
-		newColumn(first, b.last_index),
-		newColumn(second, b.last_index),
-		newColumn(third, b.last_index),
+func (m *Model) InitBaseMenu() {
+	items := []Item{
+		{ID: 1, Name: "Packages", Description: "to show packages"},
+		{ID: 2, Name: "Requests", Description: "to show active requests"},
+		{ID: 3, Name: "Upload Documents", Description: "to upload requested docs"},
+		{ID: 4, Name: "Reserve hotel", Description: "to reserve a hotel"},
+		{ID: 5, Name: "Request Visa", Description: "if you need visa"},
+		{ID: 6, Name: "Submit Visa", Description: "if you have visa"},
+		{ID: 7, Name: "Pay bill", Description: "make a payment"},
+		{ID: 8, Name: "Logout", Description: "to logout"},
 	}
-
-	b.cols[first].list.Title = "Package"
-	b.cols[first].list.SetItems([]list.Item{
-		NewItem(first, b.last_index, "Packages", "to see and choose a data"),
-		NewItem(first, b.last_index, "Upload Documents", "upload your docs"),
-		NewItem(first, b.last_index, "Reserve hotel", "reserve a hotel"),
-	})
-
-	b.cols[second].list.Title = "Visa"
-	b.cols[second].list.SetItems([]list.Item{
-		NewItem(first, b.last_index, "Request Visa", "if you need visa"),
-		NewItem(first, b.last_index, "Submit Visa", "if you have visa"),
-	})
-
-	b.cols[third].list.Title = "Dashboard"
-	b.cols[third].list.SetItems([]list.Item{
-		NewItem(first, b.last_index, "Requests", "check you requests status"),
-		NewItem(first, b.last_index, "Pay bill", "make a payment"),
-		NewItem(first, b.last_index, "Logout", "to logout"),
-	})
+	m.Items = items
 }

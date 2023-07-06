@@ -1,4 +1,4 @@
-package menu
+package styled
 
 import "github.com/charmbracelet/bubbles/key"
 

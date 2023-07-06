@@ -1,4 +1,4 @@
-package menu
+package styled
 
 type index int
 
@@ -25,6 +25,8 @@ const (
 	second
 	third
 	forth
+	fifth
+	sixth
 )
 
 type Item struct {

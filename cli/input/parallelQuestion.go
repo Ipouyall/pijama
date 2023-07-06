@@ -47,14 +47,14 @@ func (pq ParallelQuestion) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return pq, tea.Quit
 		case "enter": // to set the command
 			current := &pq.questions[pq.curser]
-			current.answer = current.input.Value()
+			current.Answer = current.input.Value()
 			if pq.curser == len(pq.questions)-1 {
-				if current.answer == "" {
+				if current.Answer == "" {
 					return pq, cmd
 				}
 				pq.done = true
 			} else {
-				if current.answer == "" {
+				if current.Answer == "" {
 					return pq, cmd
 				}
 				pq.curser = (pq.curser + 1) % len(pq.questions)
@@ -62,7 +62,7 @@ func (pq ParallelQuestion) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "up":
 			current := &pq.questions[pq.curser]
 			if current.input.Value() != "" {
-				current.answer = current.input.Value()
+				current.Answer = current.input.Value()
 			}
 			pq.curser = (pq.curser - 1 + len(pq.questions)) % len(pq.questions)
 			current = &pq.questions[pq.curser]
@@ -70,7 +70,7 @@ func (pq ParallelQuestion) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "down":
 			current := &pq.questions[pq.curser]
 			if current.input.Value() != "" {
-				current.answer = current.input.Value()
+				current.Answer = current.input.Value()
 			}
 			pq.curser = (pq.curser + 1) % len(pq.questions)
 			current = &pq.questions[pq.curser]
@@ -91,7 +91,7 @@ func (pq ParallelQuestion) View() string {
 	if pq.done {
 		var output string
 		//for _, q := range pq.questions {
-		//	output += fmt.Sprintf("%s: %s\n", q.question, q.answer)
+		//	output += fmt.Sprintf("%s: %s\n", q.question, q.Answer)
 		//}
 		return output
 	}

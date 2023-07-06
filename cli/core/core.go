@@ -22,4 +22,4 @@ type Core interface {
 	PayBill(billID int, code string) error
 }
 
-// core need to also store data and data would store requirements
+// TODO: needs to see its requests + logout
