@@ -2,7 +2,7 @@ package styled
 
 import (
 	"github.com/charmbracelet/bubbles/list"
-	"saaj/core/data"
+	"saaj/api/data"
 )
 
 func (b *Board) InitBaseMenu() {

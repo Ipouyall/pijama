@@ -4,28 +4,33 @@ import (
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
 	"log"
-	"saaj/core"
-	"saaj/core/data"
-	"saaj/input"
-	"saaj/menu"
+	"saaj/api"
+	"saaj/api/data"
+	input2 "saaj/ui/input"
+	"saaj/ui/menu"
+	"time"
 )
 
 type App struct {
-	core         core.Core
+	core         api.Core
 	packageID    int
 	requirements []data.Requirement
+	visaProc     bool
 }
 
 func NewHttpApp() *App {
-	return &App{core: core.NewREST(core.Domain)}
+	return &App{
+		core:     api.NewREST(api.Domain),
+		visaProc: false,
+	}
 }
 
 func getLogin() (string, string) {
-	questions := []input.Question{
-		input.NewShortQuestion("please enter your username:", "username"),
-		input.NewShortQuestion("please enter your password:", "password"),
+	questions := []input2.Question{
+		input2.NewShortQuestion("please enter your username:", "username"),
+		input2.NewShortQuestion("please enter your password:", "password"),
 	}
-	main := input.NewParallelQuestion(questions)
+	main := input2.NewParallelQuestion(questions)
 
 	p := tea.NewProgram(*main, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
@@ -49,6 +54,10 @@ func (a *App) login() {
 }
 
 func (a *App) showPackages() {
+	if a.visaProc {
+		fmt.Println("You need to upload some documents for your previous request (visa) first!")
+		return
+	}
 	packages := a.core.GetPackage()
 	//packages :=
 	//	[]data.Package{
@@ -76,6 +85,7 @@ func (a *App) showPackages() {
 	a.packageID = pack.ID
 
 	a.requirements = a.core.RequestPackage(pack)
+	fmt.Println("please upload your documents for treatment request in Upload section")
 }
 
 func (a *App) showRequests() {
@@ -87,12 +97,12 @@ func (a *App) uploadDocuments() {
 		fmt.Printf("You don't need to upload any document!")
 		return
 	}
-	questions := make([]input.Question, 0)
+	questions := make([]input2.Question, 0)
 	for r := range a.requirements {
-		nq := input.NewShortQuestion(a.requirements[r].Name+": "+a.requirements[r].Description, "enter file path")
+		nq := input2.NewShortQuestion(a.requirements[r].Name+": "+a.requirements[r].Description, "enter file path")
 		questions = append(questions, nq)
 	}
-	ps_ := input.NewSerialQuestions(questions)
+	ps_ := input2.NewSerialQuestions(questions)
 	p := tea.NewProgram(*ps_)
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
@@ -109,7 +119,12 @@ func (a *App) uploadDocuments() {
 		docs = append(docs, d)
 	}
 	a.requirements = reqs
-	_ = a.core.SubmitDocuments(a.packageID, docs) //TODO: handle this error
+	kind := "Treat"
+	if a.visaProc {
+		kind = "Visa"
+		a.visaProc = false
+	}
+	_ = a.core.SubmitDocuments(a.packageID, docs, kind) //TODO: handle this error
 }
 
 func (a *App) reserveHotel() {
@@ -123,9 +138,20 @@ func (a *App) reserveHotel() {
 	}
 	room := rooms[m.(menu.HotelRoomsModel).Selected]
 	_ = a.core.ReserveHotel(room.ID) //TODO: handle this error
+	fmt.Println("Your room is reserved!")
 }
 
 func (a *App) requestVisa() {
+	if len(a.requirements) != 0 {
+		fmt.Println("You need to upload some documents for your previous requests first!")
+		return
+	}
+	a.requirements = a.core.RequestVisa()
+	a.visaProc = true
+	fmt.Println("please upload your documents for visa request in Upload section")
+}
+
+func (a *App) visaStatus() {
 
 }
 
@@ -152,9 +178,9 @@ func (a *App) step() bool {
 	case "Reserve hotel":
 		a.reserveHotel()
 	case "Request Visa":
-		panic("Implement me!")
-	case "Submit Visa":
-		panic("Implement me!")
+		a.requestVisa()
+	case "Visa Status":
+		a.visaStatus()
 	case "Pay bill":
 		panic("Implement me!")
 	case "Logout":
@@ -170,5 +196,6 @@ func (a *App) Run() {
 		if a.step() == false {
 			break
 		}
+		time.Sleep(1 * time.Second)
 	}
 }

@@ -1,7 +1,7 @@
-package core
+package api
 
 import (
-	"saaj/core/data"
+	"saaj/api/data"
 )
 
 type Core interface {
@@ -10,13 +10,13 @@ type Core interface {
 	GetPackage() []data.Package
 	RequestPackage(pack data.Package) []data.Requirement
 
-	SubmitDocuments(packID int, docs []data.Document) error
+	SubmitDocuments(packID int, docs []data.Document, dKind string) error
 
 	GetHotels() []data.HotelRoom
 	ReserveHotel(hotelID int) error
 
 	RequestVisa() []data.Requirement
-	SubmitVisa(visaID int) error
+	VisaStatus() []data.VisaStatus
 
 	GetBill() data.Bill
 	PayBill(billID int, code string) error

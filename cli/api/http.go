@@ -1,4 +1,4 @@
-package core
+package api
 
 import (
 	"bytes"
@@ -7,16 +7,17 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"saaj/core/data"
+	"saaj/api/data"
 )
 
 const (
-	Domain         = "http://127.0.0.1:8000"
-	LoginPath      = "/api/v1/login"
-	PackagesPath   = "/api/v1/packages"
-	PackageReqPath = "/api/v1/package_requirements"
-	UploadDocsPath = "/api/v1/upload_user_docs"
-	HotelsPath     = "/api/v1/hotels"
+	Domain          = "http://127.0.0.1:8000"
+	LoginPath       = "/api/v1/login"
+	PackagesPath    = "/api/v1/packages"
+	PackageReqPath  = "/api/v1/package_requirements"
+	UploadDocsPath  = "/api/v1/upload_user_docs"
+	HotelsPath      = "/api/v1/hotels"
+	VisaRequestPath = "/api/v1/handle_visa_request"
 )
 
 func NewREST(domain string) *REST {
@@ -161,7 +162,7 @@ func (R *REST) RequestPackage(pack data.Package) (requirements []data.Requiremen
 	return
 }
 
-func (R *REST) SubmitDocuments(packID int, docs []data.Document) (err error) {
+func (R *REST) SubmitDocuments(packID int, docs []data.Document, dKind string) (err error) {
 	// Prepare the request body
 	requestBody := map[string]interface{}{
 		"token":     R.Token,
@@ -172,6 +173,9 @@ func (R *REST) SubmitDocuments(packID int, docs []data.Document) (err error) {
 
 	// Create the HTTP request
 	url := R.Domain + UploadDocsPath
+	if dKind == "Visa" {
+		url = R.Domain + VisaRequestPath
+	}
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(requestBodyBytes))
 	req.Header.Set("Content-Type", "application/json")
 
@@ -260,12 +264,46 @@ func (R *REST) ReserveHotel(hotelID int) error {
 	return nil
 }
 
-func (R *REST) RequestVisa() []data.Requirement {
-	//TODO implement me
-	panic("implement me")
+func (R *REST) RequestVisa() (requirements []data.Requirement) {
+	// Prepare the request body
+	requestBody := map[string]interface{}{
+		"token": R.Token,
+	}
+	requestBodyBytes, _ := json.Marshal(requestBody)
+
+	// Create the HTTP request
+	url := R.Domain + VisaRequestPath
+	req, err := http.NewRequest("GET", url, bytes.NewBuffer(requestBodyBytes))
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// Send the request and handle the response
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	// Check the response status code
+	if resp.StatusCode != http.StatusOK {
+		return
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+	err = json.Unmarshal(body, &requirements)
+	if err != nil {
+		return
+	}
+
+	return
 }
 
-func (R *REST) SubmitVisa(visaID int) error {
+func (R *REST) VisaStatus() []data.VisaStatus {
 	//TODO implement me
 	panic("implement me")
 }
