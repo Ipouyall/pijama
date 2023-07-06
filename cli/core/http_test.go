@@ -198,7 +198,7 @@ func TestRequestPackage(t *testing.T) {
 	}
 
 	// Call the RequestPackage method
-	requirements := R.RequestPackage(1)
+	requirements := R.RequestPackage(data.Package{ID: 1})
 
 	// Check the returned requirements
 	expectedRequirements := []data.Requirement{

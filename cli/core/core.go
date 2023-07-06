@@ -8,7 +8,7 @@ type Core interface {
 	Authenticate(username, password string) (error, string)
 
 	GetPackage() []data.Package
-	RequestPackage(packID int) []data.Requirement
+	RequestPackage(pack data.Package) []data.Requirement
 
 	SubmitDocuments(packID int, docs []data.Document) error
 

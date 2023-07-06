@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"saaj/core/data"
 )
 
 const (
-	Domain         = "127.0.0.1:8000"
+	Domain         = "http://127.0.0.1:8000"
 	LoginPath      = "/api/v1/login"
 	PackagesPath   = "/api/v1/packages"
 	PackageReqPath = "/api/v1/package_requirements"
@@ -118,17 +119,20 @@ func (R *REST) GetPackage() []data.Package {
 	return packages
 }
 
-func (R *REST) RequestPackage(packID int) (requirements []data.Requirement) {
+func (R *REST) RequestPackage(pack data.Package) (requirements []data.Requirement) {
 	// Prepare the request body
 	requestBody := map[string]interface{}{
-		"id":    packID,
+		"id":    pack.ID,
 		"token": R.Token,
 	}
 	requestBodyBytes, _ := json.Marshal(requestBody)
 
 	// Create the HTTP request
 	url := R.Domain + PackageReqPath
-	req, _ := http.NewRequest("GET", url, bytes.NewBuffer(requestBodyBytes))
+	req, err := http.NewRequest("GET", url, bytes.NewBuffer(requestBodyBytes))
+	if err != nil {
+		log.Fatal(err)
+	}
 	req.Header.Set("Content-Type", "application/json")
 
 	// Send the request and handle the response
@@ -144,6 +148,7 @@ func (R *REST) RequestPackage(packID int) (requirements []data.Requirement) {
 		return
 	}
 	// Parse the response body
+	R.TreatmentPackage = pack
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return

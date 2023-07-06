@@ -41,7 +41,7 @@ func (b *Board) InitPackageMenu(cols []string, packs []data.Package) {
 	for i := range cols {
 		b.cols = append(b.cols, newColumn(index(i), b.last_index))
 		b.cols[i].list.Title = cols[i]
-		columns[cols[i]] = []list.Item{}
+		columns[cols[i]] = make([]list.Item, 0)
 	}
 	for i := range packs {
 		columns[packs[i].Class] = append(columns[packs[i].Class], packs[i])

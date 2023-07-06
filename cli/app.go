@@ -8,7 +8,6 @@ import (
 	"saaj/core/data"
 	"saaj/input"
 	"saaj/menu"
-	"saaj/menu/styled"
 )
 
 type App struct {
@@ -54,28 +53,29 @@ func (a *App) showPackages() {
 	//packages :=
 	//	[]data.Package{
 	//		data.Package{
-	//			ID:    2,
-	//			Class: "Silver",
+	//			ID:       2,
+	//			Class:    "Silver",
+	//			Name:     "bb",
+	//			Category: "aas",
+	//		},
+	//		data.Package{
+	//			ID:       5,
+	//			Class:    "gerals",
+	//			Name:     "bb",
+	//			Category: "aas",
 	//		},
 	//	}
 
-	board := styled.NewBoard()
-	board.InitPackageMenu([]string{"Golden", "Silver"}, packages)
+	board := menu.NewPackageModel(packages)
 	p := tea.NewProgram(board)
-	if _, err := p.Run(); err != nil {
+	m, err := p.Run()
+	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Print("\033[2J")
-	fmt.Println("Please enter package ID:")
-	var packID int
-	_, err := fmt.Scanf("%d", &packID)
-	if err != nil {
-		fmt.Printf("error: %v\n", err)
-		return
-	}
-	a.packageID = packID
+	pack := packages[m.(menu.PackagesModel).Selected]
+	a.packageID = pack.ID
 
-	a.requirements = a.core.RequestPackage(packID)
+	a.requirements = a.core.RequestPackage(pack)
 }
 
 func (a *App) showRequests() {
@@ -113,10 +113,25 @@ func (a *App) uploadDocuments() {
 }
 
 func (a *App) reserveHotel() {
+	rooms := a.core.GetHotels()
+
+	board := menu.NewHotelRoomsModel(rooms)
+	p := tea.NewProgram(board)
+	m, err := p.Run()
+	if err != nil {
+		log.Fatal(err)
+	}
+	room := rooms[m.(menu.HotelRoomsModel).Selected]
+	_ = a.core.ReserveHotel(room.ID) //TODO: handle this error
+}
+
+func (a *App) requestVisa() {
 
 }
 
-func (a *App) step() {
+func (a *App) step() bool {
+	a.login()
+
 	initialModel := menu.Model{}
 	initialModel.InitBaseMenu()
 
@@ -144,9 +159,16 @@ func (a *App) step() {
 		panic("Implement me!")
 	case "Logout":
 		panic("Implement me!")
+		return false
 	}
+	return true
 }
 
 func (a *App) Run() {
-	a.step()
+	for {
+		fmt.Print("\033[2J")
+		if a.step() == false {
+			break
+		}
+	}
 }
