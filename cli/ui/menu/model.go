@@ -178,3 +178,61 @@ func (m HotelRoomsModel) View() string {
 
 	return view
 }
+
+type VisaStatusModel struct {
+	VisaStatus []data.VisaStatus
+	Selected   int
+}
+
+func NewVisaStatusModel(status []data.VisaStatus) *VisaStatusModel {
+	return &VisaStatusModel{
+		VisaStatus: status,
+		Selected:   0,
+	}
+}
+
+func (m VisaStatusModel) Init() tea.Cmd {
+	return nil
+}
+
+func (m VisaStatusModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "q", "esc":
+			return m, tea.Quit
+		case "up":
+			m.Selected--
+			if m.Selected < 0 {
+				m.Selected = len(m.VisaStatus) - 1
+			}
+		case "down":
+			m.Selected++
+			if m.Selected >= len(m.VisaStatus) {
+				m.Selected = 0
+			}
+		case "enter":
+			return m, tea.Quit
+		}
+	case tea.WindowSizeMsg:
+		// Not needed
+	}
+
+	return m, nil
+}
+
+func (m VisaStatusModel) View() string {
+	view := ""
+	for i, status := range m.VisaStatus {
+		sec := ""
+		sec += "--- " + status.Serial + "\n"
+		sec += "\tState: " + status.State + "\n\n"
+
+		if i == m.Selected {
+			view += lipgloss.NewStyle().Bold(true).Render(sec)
+		} else {
+			view += sec
+		}
+	}
+	return view
+}

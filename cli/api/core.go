@@ -20,6 +20,8 @@ type Core interface {
 
 	GetBill() data.Bill
 	PayBill(billID int, code string) error
+
+	Logout() error
 }
 
 // TODO: needs to see its requests + logout

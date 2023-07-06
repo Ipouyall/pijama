@@ -152,7 +152,23 @@ func (a *App) requestVisa() {
 }
 
 func (a *App) visaStatus() {
+	status := a.core.VisaStatus()
 
+	board := menu.NewVisaStatusModel(status)
+	p := tea.NewProgram(board)
+
+	if _, err := p.Run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func (a *App) logout() {
+	err := a.core.Logout()
+	if err != nil {
+		fmt.Println("Failed, error: ", err)
+		return
+	}
+	fmt.Println("You logged out successfully!")
 }
 
 func (a *App) step() bool {
@@ -184,7 +200,7 @@ func (a *App) step() bool {
 	case "Pay bill":
 		panic("Implement me!")
 	case "Logout":
-		panic("Implement me!")
+		a.logout()
 		return false
 	}
 	return true

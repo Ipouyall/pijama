@@ -18,6 +18,8 @@ const (
 	UploadDocsPath  = "/api/v1/upload_user_docs"
 	HotelsPath      = "/api/v1/hotels"
 	VisaRequestPath = "/api/v1/handle_visa_request"
+	VisaStatusPath  = ""
+	LogoutPath      = "/api/v1/logout"
 )
 
 func NewREST(domain string) *REST {
@@ -303,9 +305,35 @@ func (R *REST) RequestVisa() (requirements []data.Requirement) {
 	return
 }
 
-func (R *REST) VisaStatus() []data.VisaStatus {
-	//TODO implement me
-	panic("implement me")
+func (R *REST) VisaStatus() (vss []data.VisaStatus) {
+	requestBody := map[string]interface{}{
+		"token": R.Token,
+	}
+	requestBodyBytes, _ := json.Marshal(requestBody)
+
+	// Create the HTTP request
+	url := R.Domain + VisaStatusPath
+	req, err := http.NewRequest("GET", url, bytes.NewBuffer(requestBodyBytes))
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// Send the request and handle the response
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return
+	}
+
+	_ = json.NewDecoder(resp.Body).Decode(&vss)
+
+	return
 }
 
 func (R *REST) GetBill() data.Bill {
@@ -316,4 +344,31 @@ func (R *REST) GetBill() data.Bill {
 func (R *REST) PayBill(billID int, code string) error {
 	//TODO implement me
 	panic("implement me")
+}
+
+func (R *REST) Logout() (err error) {
+	requestBody := map[string]interface{}{
+		"token": R.Token,
+	}
+	requestBodyBytes, _ := json.Marshal(requestBody)
+
+	url := R.Domain + LogoutPath
+	req, err := http.NewRequest("GET", url, bytes.NewBuffer(requestBodyBytes))
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		err = fmt.Errorf("failed to logging out")
+	}
+
+	return
 }
