@@ -1,3 +1,3 @@
 #! /bin/bash
-cd logic
+cd django
 python manage.py runserver
