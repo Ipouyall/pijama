@@ -204,12 +204,12 @@ func (a *App) billing() {
 		delete(a.Bills, key)
 	}
 
-	//q := input2.NewShortQuestion(fmt.Sprintf("Enter your card number: (cost: %d)", billed.Cost), "credit-card number")
-	//form := input2.NewSerialQuestions([]input2.Question{q})
-	//p = tea.NewProgram(*form)
-	//if _, err := p.Run(); err != nil {
-	//	log.Fatal(err)
-	//}
+	q := input2.NewShortQuestion(fmt.Sprintf("Enter your card number: (cost: %d)", billed.Cost), "credit-card number")
+	form := input2.NewSerialQuestions([]input2.Question{q})
+	p = tea.NewProgram(*form)
+	if _, err := p.Run(); err != nil {
+		log.Fatal(err)
+	}
 	fmt.Print("\033[2J")
 	fmt.Println("Your payment is done successfully!")
 }

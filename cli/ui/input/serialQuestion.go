@@ -26,6 +26,9 @@ func (m SerialQuestion) Init() tea.Cmd {
 func (m SerialQuestion) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	current := &m.questions[m.index]
 	var cmd tea.Cmd
+	if m.done {
+		return m, tea.Quit
+	}
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
