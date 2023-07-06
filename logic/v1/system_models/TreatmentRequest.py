@@ -29,6 +29,9 @@ class Package(models.Model):
     def __str__(self):
         return self.package_name    
 
+TR_STATUS_VERIFYING=1
+TR_STATUS_ACTIVE=3
+TR_STATUS_DONE=2
 
 class TreatmentRequestStatus(models.Model):
     status = models.CharField(max_length=200)

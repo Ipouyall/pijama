@@ -6,9 +6,9 @@ from django.utils import timezone
 from .Payment import PaymentRequest
 from .ExtendedUser import Patient
 import random,string
-Expired_Visa = 2
-Active_Visa = 3
-Verifying_Visa = 1
+Expired_Visa = 5
+Active_Visa = 6
+Verifying_Visa = 4
 class VizaStatus(models.Model):
     status = models.CharField(max_length=300)
     def __str__(self):

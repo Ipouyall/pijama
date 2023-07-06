@@ -7,6 +7,7 @@ from django.utils import timezone
 Unpaid =1
 PaymentVerifiedPending = 2
 PaymentConfirmed = 3
+
 class PaymentStatus(models.Model):
     status = models.CharField(max_length=300)
     def __str__(self):

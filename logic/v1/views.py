@@ -68,6 +68,8 @@ class TreatmentRequestHandler():
         treatment_request.reserved_hotel_id=hotel_id
         treatment_request.save()
         return True
+    def update_treatment_request_with_support_id(tr_id,support_id):
+        return QueryBuilder.update_treatment_request_with_support_id(tr_id,support_id)
 
 class AccomadationHandler():
     def get_hotels(request):
@@ -187,6 +189,7 @@ class Controller():
             tr_user = Controller.get_sys_admin_by_token(request)
             if (tr_user != None):
                 user = QueryBuilder.get_user_id_by_payment_id(request_json.get("payment_id"))
+                extended_user = user.related_user
                 if (user == None):
                     response = JsonResponse({"message":"User does not exist"},safe=False)
                     response.status_code = 404 
@@ -202,12 +205,13 @@ class Controller():
                     logging.warn(payment_request.status.id)
                     QueryBuilder.update_payment_request_with_status(payment_id,payment_status)
                     
-                    Notifier.notify(user.chat_id, format("Your payment has been accepted by admin"))
-                    
-                    if (Controller.assign_support(treatment_request.id,user.id)):
-                        Notifier.notify(user.chat_id, format("Support has been assigned to your treatment request"))
+                    Notifier.notify(extended_user.chat_id, format("Your payment has been accepted by admin"))
+                    support_id =Controller.assign_support(treatment_request.id,user.id)
+                    if (support_id):
+                        TreatmentRequestHandler.update_treatment_request_with_support_id(treatment_request.id,support_id)
+                        Notifier.notify(extended_user.chat_id, format("Support has been assigned to your treatment request"))
                     else :
-                        Notifier.notify(user.chat_id, format("Failed to assign support to your treatment request please check the panel"))
+                        Notifier.notify(extended_user.chat_id, format("Failed to assign support to your treatment request please check the panel"))
                         
                     return JsonResponse({"message":"PaymentRequest status updated succefully"},safe=False)
                 else:
@@ -253,7 +257,7 @@ class Controller():
                             return JsonResponse({"status":200,
                                                  "message":"Package payment request created",
                                                  "payment_request_id": package_payment.id,
-                                                 "total_cost" : total_cost })
+                                                 "total_cost" : int(total_cost) })
                         else:
                             response =JsonResponse({"message":"Visa status is " + visa.status.status + " Wait for viza confirmation or try again for viza"}) 
                             response.status_code = 403
@@ -306,6 +310,7 @@ class Controller():
                 tr_id = request_json.get("tr_id")
                 treatment_request = TreatmentRequestHandler.get_treatment_request(tr_id,tr_user.id)
                 if (treatment_request != None):
+                    logger.warn(tr_user.id)
                     visa = VisaHandler.create_empty_visa(tr_user.id)
                     VisaHandler.add_visa_docs(request_json,visa.serial_no)
                     payment_request = PaymentHandler.create_invoice(visa.request_cost,tr_id)

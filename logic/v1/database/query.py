@@ -10,7 +10,7 @@ import logging
 class QueryBuilder():
     @staticmethod
     def get_user_id_by_payment_id(payment_id):
-        return PaymentRequest.objects.filter(pk =payment_id).first().related_treatment_request.related_patient.related_user
+        return PaymentRequest.objects.filter(pk =payment_id).first().related_treatment_request.related_patient
     def get_relative_supports(city_name):
         return Support.objects.filter(related_user__city_id=city_name,occupied=False).values_list('id',flat=True)
     def update_support_occupied(support_id):
@@ -23,6 +23,8 @@ class QueryBuilder():
             return TreatmentRequest.objects.filter(id=tr_id).first()
         else:
             return TreatmentRequest.objects.filter(id=tr_id,related_patient__id=user_id).first()
+    def update_treatment_request_with_support_id(tr_id,support_id):
+            return TreatmentRequest.objects.filter(id=tr_id).update(related_support_id=support_id,status=TR_STATUS_ACTIVE)
             
     def insert_treatment_request(pid,uid,td_ids):
         last_updated = datetime.now()
