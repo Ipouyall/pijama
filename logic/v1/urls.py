@@ -11,5 +11,7 @@ urlpatterns = [
     path("hotels",Controller.handle_hotel_request,name="hotels"),
     path("visa_status",Controller.get_visa_status,name="visa_status"),
     path("handle_visa_request",Controller.handle_visa_request,name="visa_request"),
-    path("handle_payment_bill_request",Controller.handle_payment_bill_request,name="handle_payment_bill_request")
+    path("handle_payment_bill_request",Controller.handle_payment_bill_request,name="handle_payment_bill_request"),
+    path("sysadmin/change_visa_status",Controller.change_visa_status,name="change_visa_status"),
+    path("sysadmin/change_payment_status",Controller.change_payment_status,name="change_payment_statuss")
 ]

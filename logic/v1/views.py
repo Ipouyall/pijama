@@ -141,6 +141,73 @@ class SupportHandler():
         support_occupied_id = QueryBuilder.update_support_occupied(support_id)
         return support_occupied_id
 class Controller():
+    def change_visa_status(request):
+        if (request.method == 'POST'):
+            request_json = json.loads(request.body)
+            
+            tr_user = Controller.get_user_by_token(request)
+            logging.warn(tr_user)
+            if (tr_user != None and tr_user.related_user.username == 'admin'):
+
+                serial_no = request_json.get("serial_no") 
+                visa = QueryBuilder.get_visa_raw(serial_no)
+
+                if (visa != None):
+                    logging.warn(visa.status.id)
+                    visa.status__id = request_json.get("visa_status")
+                    logging.warn(request_json.get("visa_status"))
+                    logging.warn(visa.status.id)
+                    visa.save()
+                    logging.warning("dsfsdfsdfsf")
+                    response = JsonResponse({"message":"Visa does not exist"},safe=False)
+                    response.status_code = 404 
+                    return JsonResponse({"message":"Visa status updated succefully"},safe=False)
+                else:
+                    response = JsonResponse({"message":"Visa does not exist"},safe=False)
+                    response.status_code = 404 
+                    return response
+            else:
+                response = JsonResponse({"message":"You don't have access."},safe=False)
+                response.status_code = 403 
+                return response
+    @staticmethod
+    def change_payment_status(request):
+        if (request.method == 'POST'):
+            request_json = json.loads(request.body)
+            
+            tr_user = Controller.get_user_by_token(request)
+            logging.warn(tr_user)
+            if (tr_user != None and tr_user.related_user.username == 'admin'):
+
+                payment_id = request_json.get("payment_id") 
+                payment_status = request_json.get("payment_status")
+                payment_request = QueryBuilder.get_payment_request(payment_id)
+
+                if (payment_request != None):
+                    logging.warn(payment_request.status.id)
+                    payment_request.status__id = payment_status
+                    logging.warn(request_json.get("payment_id"))
+                    logging.warn(payment_request.status.id)
+                    payment_request.save()
+                    logging.warning("dsfsdfsdfsf")
+                    response = JsonResponse({"message":"PaymentRequest does not exist"},safe=False)
+                    response.status_code = 200
+                    return JsonResponse({"message":"PaymentRequest status updated succefully"},safe=False)
+                else:
+                    response = JsonResponse({"message":"PaymentRequest does not exist"},safe=False)
+                    response.status_code = 404
+                    return response
+            else:
+                response = JsonResponse({"message":"You don't have access."},safe=False)
+                response.status_code = 403 
+                return response
+            # tr_user = Controller.get_user_by_token(request)
+            # if (tr_user != None):
+            #     tr_id = request_json.get("tr_id) 
+            #     else:
+            #      response =JsonResponse({"message":"Not Authorized to access Treatment Request or Treatment Request not found"}) 
+            #      response.status_code = 403
+            #      return response
     @staticmethod
     # Change Treatment Request Status
     def assign_support(tr_id,user_token):
@@ -156,16 +223,14 @@ class Controller():
             else:   
                 return False
     def handle_payment_bill_request(request):
-        if (request.method =='GET'):
-            response = JsonResponse({"message":"Method not allowed"},safe=False)
-            response.status_code = 405 
-            return response
         if (request.method == 'POST'):
             request_json = json.loads(request.body)
             tr_user = Controller.get_user_by_token(request)
             if (tr_user != None):
-                tr_id = request_json.get("tr_id")
-                treatment_request = TreatmentRequestHandler.get_treatment_request(tr_id,tr_user.id)
+                # tr_id = request_json.get("tr_id")
+                # treatment_request = TreatmentRequestHandler.get_treatment_request(tr_id,tr_user.id)
+                treatment_request = QueryBuilder.get_user_in_tr_id(tr_user.related_user.id).first()
+                logging.warn(treatment_request)
                 if (treatment_request != None):
                     serial_no = request_json.get("serial_no")
                     visa = VisaHandler.check_viza(serial_no,tr_user.token)
@@ -176,7 +241,7 @@ class Controller():
                             return JsonResponse({"status":200,
                                                  "message":"Package payment request created",
                                                  "payment_request_id": package_payment.id,
-                                                 "total cost" : package_payment.value })
+                                                 "total_cost" : int(package_payment.value) })
                         else:
                             response =JsonResponse({"message":"Visa status is " + visa.status.status + " Wait for viza confirmation or try again for viza"}) 
                             response.status_code = 403
@@ -188,7 +253,15 @@ class Controller():
                 else:
                  response =JsonResponse({"message":"Not Authorized to access Treatment Request or Treatment Request not found"}) 
                  response.status_code = 403
-                 return response   
+                 return response 
+            else:
+                response = JsonResponse({"message":"You don't have access."},safe=False)
+                response.status_code = 403 
+                return response
+        else:
+            response = JsonResponse({"message":"Method not allowed"},safe=False)
+            response.status_code = 405 
+            return response  
     
     def get_user_by_token(request):
         request_json = json.loads(request.body)
@@ -215,11 +288,16 @@ class Controller():
                     return JsonResponse({"status":200,
                                          "message":"Visa request pending succesfully,Payment Request created and needs to be paid",
                                          "serial_no":visa.serial_no,
-                                         "payment_request_id" :payment_request.id })
+                                         "payment_request_id" :payment_request.id,
+                                         "total_cost": payment_request.value })
                 else:
+                 response =JsonResponse({"message":"Treatment Request doesn't exist"}) 
+                 response.status_code = 403
+                 return response
+            else:
                  response =JsonResponse({"message":"Not Authorized"}) 
                  response.status_code = 403
-                 return response   
+                 return response  
         else:
             response = JsonResponse({"message":"Method not allowed"},safe=False)
             response.status_code = 405 

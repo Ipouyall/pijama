@@ -6,6 +6,7 @@ from ..system_models.TreatmentRequest import *
 from ..system_models.Viza import * 
 from ..system_models.Requirement import VizaRequirement,Requirement
 from ..system_models.Document import VizaDocument
+import logging
 class QueryBuilder():
     @staticmethod
     def get_relative_supports(city_name):
@@ -64,6 +65,9 @@ class QueryBuilder():
     def get_visa(serial_no,user_token):
         return Viza.objects.filter(serial_no=serial_no,related_user__related_user__token=user_token).first()
     #-----------------------------------------------------------#
+    def get_visa_raw(serial_no):
+        return Viza.objects.filter(pk=serial_no).first()
+    #-----------------------------------------------------------#
     def insert_new_payment_request(value,tr_id):
         p = PaymentRequest(value=value,related_treatment_request_id=tr_id)
         p.save()
@@ -71,3 +75,12 @@ class QueryBuilder():
         #-----------------------------------------------------------#
     def get_user_in_tr_id(uid):
         return TreatmentRequest.objects.filter(related_patient__id=uid).all()
+    def get_payment_request(paymentId):
+        return PaymentRequest.objects.filter(pk=paymentId).first()
+
+    def get_user_in_visa(uid):
+        viza = Viza.objects.filter(related_user__id=uid).first()
+        if (viza == None):
+            return viza
+        pateint = Patient.objects.filter(related_user__related_user__id=viza.related_user.id).first()
+        return pateint
