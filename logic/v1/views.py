@@ -1,3 +1,8 @@
+# TODO fix status codes
+# TODO Move queries of package and hotel to Query Builder
+# TODO  Payment Request double endpoint that calls assigns support
+# TODO Notify different people
+# TODO check city id stuff
 from django.shortcuts import render
 from django.http import HttpResponse,JsonResponse
 from django.core import serializers
@@ -8,7 +13,7 @@ from .system_models.Payment import *
 from .system_models.Medical import * 
 from .system_models.TreatmentRequest import * 
 from .system_models.Viza import * 
-
+import random
 # from django.contrib.users
 from django.contrib.auth import logout                           
 import logging
@@ -62,11 +67,7 @@ class TreatmentRequestHandler():
         treatment_request.reserved_hotel_id=hotel_id
         treatment_request.save()
         return True
-    def update_treatment_request_with_visa_serial_no(tr_id,visa_serial_no):
-        treatment_request = TreatmentRequestHandler.get_treatment_request(tr_id)
-        treatment_request.related_visa=visa_serial_no
-        treatment_request.save()
-        return True     
+
 class AccomadationHandler():
     def get_hotels(request):
             request_json = json.loads(request.body)
@@ -114,13 +115,74 @@ class VisaHandler():
                         content = document ["content"]
                         id = QueryBuilder.insert_visa_doc(title,content,related_req_id,serial_no)
         return True
-
     def check_viza(serial_no,user_token):
         viza= QueryBuilder.get_visa(serial_no,user_token)
         return viza            
     
+class PaymentHandler():
+    @staticmethod
+    def create_invoice(value,tr_id):
+        return QueryBuilder.insert_new_payment_request(value,tr_id)
+
+class SupportHandler():
+    @staticmethod
+    def assign_support(city_name):
+        potential_support_ids = QueryBuilder.get_relative_supports(city_name)
+        random_support_id = random.choices(potential_support_ids)
+        return random_support_id   
+    def update_support_occupied(support_id):
+        support_occupied_id = QueryBuilder.update_support_occupied(support_id)
+        return support_occupied_id
 class Controller():
     @staticmethod
+    # Change Treatment Request Status
+    def assign_support(tr_id,user_token):
+            tr_user = Controller.get_user_by_token(user_token)
+            if (tr_user != None):
+                treatment_request = TreatmentRequestHandler.get_treatment_request(tr_id,tr_user.id)
+                if (treatment_request != None):
+                    assigned_support_id = SupportHandler.assign_support(tr_id)
+                    SupportHandler.update_support_occupied(assigned_support_id)
+                    return assigned_support_id
+                else:
+                    return False
+            else:   
+                return False
+    def handle_payment_bill_request(request):
+        if (request.method =='GET'):
+            response = JsonResponse({"message":"Method not allowed"},safe=False)
+            response.status_code = 405 
+            return response
+        if (request.method == 'POST'):
+            request_json = json.loads(request.body)
+            tr_user = Controller.get_user_by_token(request)
+            if (tr_user != None):
+                tr_id = request_json.get("tr_id")
+                treatment_request = TreatmentRequestHandler.get_treatment_request(tr_id,tr_user.id)
+                if (treatment_request != None):
+                    serial_no = request_json.get("serial_no")
+                    visa = VisaHandler.check_viza(serial_no,tr_user.token)
+                    if (visa != None):
+                        if (visa.status.id == Active_Visa):
+                            value = treatment_request.related_package.estimated_cost
+                            package_payment = PaymentHandler.create_invoice(value,treatment_request.id)
+                            return JsonResponse({"status":200,
+                                                 "message":"Package payment request created",
+                                                 "payment_request_id": package_payment.id,
+                                                 "total cost" : package_payment.value })
+                        else:
+                            response =JsonResponse({"message":"Visa status is " + visa.status.status + " Wait for viza confirmation or try again for viza"}) 
+                            response.status_code = 403
+                            return response    
+                    else:
+                        response =JsonResponse({"message":"Visa did not exist for the provided user"}) 
+                        response.status_code = 404
+                        return response   
+                else:
+                 response =JsonResponse({"message":"Not Authorized to access Treatment Request or Treatment Request not found"}) 
+                 response.status_code = 403
+                 return response   
+    
     def get_user_by_token(request):
         request_json = json.loads(request.body)
         if (request_json.get("token")):
@@ -134,16 +196,23 @@ class Controller():
             request_json = json.loads(request.body)
             tr_user = Controller.get_user_by_token(request)
             if (tr_user != None):
-                visa = VisaHandler.create_empty_visa(tr_user.id)
-                VisaHandler.add_visa_docs(request_json,visa.serial_no)
-                visa.save()
-                return JsonResponse({"status":200,
-                                     "message":"Visa request pending succesfully",
-                                     "serial_no":visa.serial_no})  
-
-            else:
-             return JsonResponse({"status":403,
-                                     "message":"Not Authorized"})  
+                # Check tr id exists 
+                tr_id = request_json.get("tr_id")
+                treament_request = TreatmentRequestHandler.get_treatment_request(tr_id,tr_user.id)
+                if (treament_request != None):
+                    visa = VisaHandler.create_empty_visa(tr_user.id)
+                    VisaHandler.add_visa_docs(request_json,visa.serial_no)
+                    payment_request = PaymentHandler.create_invoice(visa.request_cost,tr_id)
+                    visa.related_payment_request_id=payment_request.id
+                    visa.save()
+                    return JsonResponse({"status":200,
+                                         "message":"Visa request pending succesfully,Payment Request created and needs to be paid",
+                                         "serial_no":visa.serial_no,
+                                         "payment_request_id" :payment_request.id })
+                else:
+                 response =JsonResponse({"message":"Not Authorized"}) 
+                 response.status_code = 403
+                 return response   
         else:
             response = JsonResponse({"message":"Method not allowed"},safe=False)
             response.status_code = 405 
@@ -151,7 +220,6 @@ class Controller():
 
 
     def get_visa_status(request):
-     
         if (request.method == 'POST'):
             request_json = json.loads(request.body)
             serial_no = request_json.get("serial_no")

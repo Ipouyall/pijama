@@ -14,6 +14,6 @@ class Document(models.Model):
 
 
 class VizaDocument(Document):
-    related_visa = models.ForeignKey(Viza,verbose_name="related_visa",on_delete=models.DO_NOTHING,null=True,blank=True) 
+    related_visa = models.ForeignKey(Viza,verbose_name="related_visa",on_delete=models.CASCADE,null=True,blank=True) 
     def __str__(self):
         return self.document_title

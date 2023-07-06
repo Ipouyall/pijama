@@ -10,5 +10,6 @@ urlpatterns = [
     path("package_requirements",PackageHandler.get_package_requirements,name="package_requirements"),
     path("hotels",Controller.handle_hotel_request,name="hotels"),
     path("visa_status",Controller.get_visa_status,name="visa_status"),
-    path("handle_visa_request",Controller.handle_visa_request,name="visa_request")
+    path("handle_visa_request",Controller.handle_visa_request,name="visa_request"),
+    path("handle_payment_bill_request",Controller.handle_payment_bill_request,name="handle_payment_bill_request")
 ]

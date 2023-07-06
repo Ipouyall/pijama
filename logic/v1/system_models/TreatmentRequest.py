@@ -39,6 +39,7 @@ class TreatmentRequest(models.Model):
     related_package= models.ForeignKey(Package,verbose_name="tr_related_package",on_delete=models.DO_NOTHING,null=True,blank=True)
     related_patient = models.ForeignKey(Patient,verbose_name="tr_related_user",on_delete=models.CASCADE,null=True,blank=True)
     related_documents = models.ManyToManyField(Document,verbose_name="related_documents",null=True,blank=True)
+    related_support = models.ForeignKey(Support,verbose_name="related_support",null=True,blank=True,on_delete=models.DO_NOTHING)
     submitted_date = models.DateTimeField(default=timezone.now)
     last_updated = models.DateTimeField()
     status = models.ForeignKey(TreatmentRequestStatus,default=1,on_delete=models.DO_NOTHING)

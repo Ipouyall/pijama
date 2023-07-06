@@ -8,6 +8,12 @@ from ..system_models.Requirement import VizaRequirement,Requirement
 from ..system_models.Document import VizaDocument
 class QueryBuilder():
     @staticmethod
+    def get_relative_supports(city_name):
+        return Support.objects.filter(related_user__city_id=city_name,occupied=True).values_list('id')
+    def update_support_occupied(support_id):
+        support = Support.objects.get(id = support_id)
+        support.occupied=True
+        return True 
     def get_treatment_request(tr_id,user_id=None):
         if (user_id == None):
             return TreatmentRequest.objects.filter(id=tr_id).first()
@@ -54,3 +60,8 @@ class QueryBuilder():
         return VizaRequirement.objects.all()
     def get_visa(serial_no,user_token):
         return Viza.objects.filter(serial_no=serial_no,related_user__related_user__token=user_token).first()
+    #-----------------------------------------------------------#
+    def insert_new_payment_request(value,tr_id):
+        p = PaymentRequest(value=value,related_treatment_request_id=tr_id)
+        p.save()
+        return p

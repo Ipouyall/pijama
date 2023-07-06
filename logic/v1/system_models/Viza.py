@@ -9,7 +9,6 @@ import random,string
 Expired_Visa = 2
 Active_Visa = 3
 Verifying_Visa = 1
-
 class VizaStatus(models.Model):
     status = models.CharField(max_length=300)
     def __str__(self):
@@ -20,6 +19,7 @@ class Viza(models.Model):
     expiry_date = models.DateTimeField(null=True,blank=True)
     assigned_date = models.DateTimeField(null=True,blank=True)
     serial_no = models.CharField(max_length=64,primary_key=True)
+    request_cost = models.DecimalField(max_digits=12,decimal_places=0,default=50000)
     status = models.ForeignKey(VizaStatus,default=Verifying_Visa,on_delete=models.DO_NOTHING)
     related_payment_request = models.OneToOneField(PaymentRequest,verbose_name="related_payment_request",on_delete=models.CASCADE,null=True,blank=True)
     def __str__(self):

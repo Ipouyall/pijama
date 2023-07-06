@@ -1,10 +1,11 @@
 from django.db import models
 from django.contrib.auth.models import User
 from .Medical import Hospital
-
+from .Geography import City
 class ExtendedUser(models.Model):
     related_user = models.OneToOneField(User,on_delete=models.CASCADE,related_name='extended_user_real_user')
     chat_id =models.IntegerField()
+    city = models.OneToOneField(City,null=True,blank=True,on_delete=models.CASCADE)
     token = models.CharField(max_length=32,null=True,blank=True)
     def __str__(self) -> str:
         return self.related_user.username
@@ -23,8 +24,9 @@ class Patient(models.Model):
         return self.related_user.related_user.username
 
 class Support(models.Model):
-    cor_user = models.OneToOneField(ExtendedUser,verbose_name='related_user',on_delete=models.CASCADE,related_name='support_doc')
+    related_user = models.OneToOneField(ExtendedUser,verbose_name='related_user',on_delete=models.CASCADE,related_name='support_doc')
     years_of_experience = models.IntegerField(default=0)
+    occupied = models.BooleanField(default=False)
     def __str__(self):
         return self.related_user.related_user.username
 
