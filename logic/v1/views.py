@@ -418,8 +418,13 @@ class PackageHandler():
         for package_dict in packages_dict:
             package_dict['city'] = package_dict['city']['city_name']
             package_dict['related_doctor'] = package_dict['related_doctor']['related_user']['related_user']['username']
+            package_dict['doctor'] = package_dict.pop('related_doctor')
             package_dict['related_hospital'] = package_dict['related_hospital']['hospital_name']
+            package_dict['hospital'] = package_dict.pop('related_hospital')
             package_dict['disease'] = package_dict['disease']['disease_name']
+            package_dict['package_class'] = package_dict['package_class']['p_class']
+            package_dict['catagory'] = package_dict.pop('disease')
+            package_dict['estimated_cost'] = int(package_dict['estimated_cost'] )
             del package_dict['requirements']
         serialized_packages = json.dumps(list(packages_dict),cls=ExtendedEncoder)
         return JsonResponse(json.loads(serialized_packages) ,safe=False)
@@ -428,8 +433,18 @@ class PackageHandler():
         request_json = json.loads(request.body)
         id = request_json["id"]
         package = QueryBuilder.get_package(id)
-        
-        serialized_package = json.dumps(package,cls=ExtendedEncoder)
+        package_dict = ModelToDict(package)
+        package_dict['city'] = package_dict['city']['city_name']
+        package_dict['related_doctor'] = package_dict['related_doctor']['related_user']['related_user']['username']
+        package_dict['doctor'] = package_dict.pop('related_doctor')
+        package_dict['related_hospital'] = package_dict['related_hospital']['hospital_name']
+        package_dict['hospital'] = package_dict.pop('related_hospital')
+        package_dict['disease'] = package_dict['disease']['disease_name']
+        package_dict['package_class'] = package_dict['package_class']['p_class']
+        package_dict['catagory'] = package_dict.pop('disease')
+        package_dict['estimated_cost'] = int(package_dict['estimated_cost'] )
+        del package_dict['requirements']
+        serialized_package = json.dumps(package_dict,cls=ExtendedEncoder)
         return JsonResponse(json.loads(serialized_package),safe=False)
     
     def get_package_requirements(request):
