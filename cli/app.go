@@ -124,9 +124,11 @@ func (a *App) uploadDocuments() {
 		docs = append(docs, d)
 	}
 	a.requirements = reqs
-	kind := "Treat"
+	var kind string
 	if a.visaProc {
 		kind = "Visa"
+	} else {
+	    kind = "Treat"
 	}
 	_, bill := a.core.SubmitDocuments(a.packageID, docs, kind) //TODO: handle this error
 	if a.visaProc {
@@ -267,6 +269,6 @@ func (a *App) Run() {
 		if a.step() == false {
 			break
 		}
-		time.Sleep(1)
+		time.Sleep(1*time.Second)
 	}
 }

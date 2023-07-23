@@ -380,8 +380,8 @@ class Controller():
                                      "message":"PAckage not found"})
                 response.status_code = 403
                 return response
-            t_user=Controller.get_user_by_token(request)
-            uid  = 0
+            t_user = Controller.get_patient_by_token(request)
+            uid = 0
             if (t_user != None):
                 trs = list(QueryBuilder.get_user_in_tr_id(t_user.related_user.pk))
                 logger.warn(trs)
@@ -393,7 +393,7 @@ class Controller():
                                      "message":"You have already have an active treatment request: " + str(tr.id)})
                         response.status_code = 403
                         return response
-                uid = t_user.related_user.id
+                uid = t_user.id
                 td_ids = DocumentHandler.submit_docs(request_json)
             else:
                 response = JsonResponse({"status":403,
@@ -402,8 +402,8 @@ class Controller():
                 return response
                  
             logger.warn([uid,pid,td_ids])
-            tr_id = TreatmentRequestHandler.create_treatment_request(uid,pid,td_ids)
-            return JsonResponse({"tr_id":tr_id,
+            tr_id = TreatmentRequestHandler.create_treatment_request(pid, uid, td_ids)
+            return JsonResponse({"tr_id": tr_id,
                                  "status": 200})
         else:
             response = JsonResponse({"message":"Method not allowed"},safe=False)

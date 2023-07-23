@@ -176,6 +176,8 @@ func (R *REST) SubmitDocuments(packID int, docs []data.Document, dKind string) (
 	}
 	requestBodyBytes, _ := json.Marshal(requestBody)
 
+	fmt.Println(requestBody)
+
 	// Create the HTTP request
 	url := R.Domain + UploadDocsPath
 	if dKind == "Visa" {
@@ -183,6 +185,8 @@ func (R *REST) SubmitDocuments(packID int, docs []data.Document, dKind string) (
 	}
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(requestBodyBytes))
 	req.Header.Set("Content-Type", "application/json")
+
+	fmt.Println(requestBody, url)
 
 	// Send the request and handle the response
 	client := &http.Client{}
@@ -192,11 +196,15 @@ func (R *REST) SubmitDocuments(packID int, docs []data.Document, dKind string) (
 	}
 	defer resp.Body.Close()
 
+	var resppp map[string]interface{}
+	_ = json.NewDecoder(resp.Body).Decode(&resppp)
+	fmt.Println(resppp)
+
 	// Check the response status code
-	if resp.StatusCode != http.StatusOK {
-		// Request failed
-		return fmt.Errorf("request failed with status code: %d", resp.StatusCode), bill
-	}
+// 	if resp.StatusCode != http.StatusOK {
+// 		// Request failed
+// 		return fmt.Errorf("request failed with status code: %d", resp.StatusCode), bill
+// 	}
 
 	// Request succeeded
 	var response struct {
@@ -207,9 +215,11 @@ func (R *REST) SubmitDocuments(packID int, docs []data.Document, dKind string) (
 	}
 	// Parse the response body
 	err = json.NewDecoder(resp.Body).Decode(&response)
-	if err != nil {
-		return
-	}
+	fmt.Println(response)
+// 	if err != nil {
+// 		return
+// 	}
+	fmt.Println(dKind)
 	if dKind == "Treat" {
 		R.TreatmentPackageID = response.TreatmentRequestID
 	}
@@ -234,6 +244,8 @@ func (R *REST) GetHotels() (rooms []data.HotelRoom) {
 	}
 	requestBodyBytes, _ := json.Marshal(requestBody)
 
+	fmt.Println(requestBody)
+
 	// Create the HTTP request
 	url := R.Domain + HotelsPath
 	req, _ := http.NewRequest("GET", url, bytes.NewBuffer(requestBodyBytes))
@@ -246,6 +258,10 @@ func (R *REST) GetHotels() (rooms []data.HotelRoom) {
 		return
 	}
 	defer resp.Body.Close()
+
+	var resppp map[string]interface{}
+	_ = json.NewDecoder(resp.Body).Decode(&resppp)
+	fmt.Println(resppp)
 
 	// Check the response status code
 	if resp.StatusCode != http.StatusOK {
@@ -260,7 +276,7 @@ func (R *REST) GetHotels() (rooms []data.HotelRoom) {
 func (R *REST) ReserveHotel(hotelID int) error {
 	requestBody := map[string]interface{}{
 		"package_id": R.TreatmentPackage.ID,
-		"tr_id":      R.TreatmentPackageID,
+		"tr_id":      9,
 		"hotel_id":   hotelID,
 		"token":      R.Token,
 	}
@@ -269,12 +285,18 @@ func (R *REST) ReserveHotel(hotelID int) error {
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(requestBodyBytes))
 	req.Header.Set("Content-Type", "application/json")
 
+	fmt.Println(requestBody)
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
+
+	var resppp map[string]interface{}
+	_ = json.NewDecoder(resp.Body).Decode(&resppp)
+	fmt.Println(resppp)
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("request failed with status code: %d", resp.StatusCode)
@@ -289,6 +311,8 @@ func (R *REST) RequestVisa() (requirements []data.Requirement) {
 		"tr_id": R.TreatmentPackageID,
 	}
 	requestBodyBytes, _ := json.Marshal(requestBody)
+
+	fmt.Println(requestBody)
 
 	// Create the HTTP request
 	url := R.Domain + VisaRequestPath
@@ -305,6 +329,10 @@ func (R *REST) RequestVisa() (requirements []data.Requirement) {
 		return
 	}
 	defer resp.Body.Close()
+
+	var resppp map[string]interface{}
+	_ = json.NewDecoder(resp.Body).Decode(&resppp)
+	fmt.Println(resppp)
 
 	// Check the response status code
 	if resp.StatusCode != http.StatusOK {
